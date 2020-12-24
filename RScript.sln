@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30804.86
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "RScript", "RScript.vbproj", "{4ADE04B1-3EA7-43B1-951D-0035FA63F661}"
+EndProject
+Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "RScriptTest", "..\RScriptTest\RScriptTest.vbproj", "{E67E5630-EFB7-484E-ACB0-30F5BED10A9D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4ADE04B1-3EA7-43B1-951D-0035FA63F661}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4ADE04B1-3EA7-43B1-951D-0035FA63F661}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4ADE04B1-3EA7-43B1-951D-0035FA63F661}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4ADE04B1-3EA7-43B1-951D-0035FA63F661}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E67E5630-EFB7-484E-ACB0-30F5BED10A9D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E67E5630-EFB7-484E-ACB0-30F5BED10A9D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E67E5630-EFB7-484E-ACB0-30F5BED10A9D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E67E5630-EFB7-484E-ACB0-30F5BED10A9D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {21BF7EFB-FEAE-44DE-82BE-D38ECA115637}
+	EndGlobalSection
+EndGlobal
