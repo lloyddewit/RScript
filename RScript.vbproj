@@ -90,6 +90,7 @@
     <Compile Include="clsRParameterNamed.vb" />
     <Compile Include="clsRScript.vb" />
     <Compile Include="clsRStatement.vb" />
+    <Compile Include="clsRToken.vb" />
     <Compile Include="clsRTreeElement.vb" />
     <Compile Include="clsRTreeToRCodeConverter.vb" />
     <Compile Include="clsRTreeToRElementConverter.vb" />
