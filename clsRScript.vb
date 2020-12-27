@@ -37,33 +37,16 @@ Public Class clsRScript
     'End Function
 
     Public Function GetLstLexemes(strInput As String) As List(Of String)
+
+        If (String.IsNullOrEmpty(strInput)) Then
+            'TODO throw exception
+            Return Nothing
+        End If
+
         Dim lstLexemes = New List(Of String)
         Dim strTextNew As String = Nothing
 
         For Each chrNew As Char In strInput
-
-            'if there are an odd number of double quotes then it means we are inside a string literal (e.g. inside '" - "')
-            'Note:  this check is needed to ensure that special characters (e.g. brackets or operator characters) inside string literals are ignored
-            If Not IsNothing(strTextNew) AndAlso strTextNew.Where(Function(c) c = Chr(34)).Count Mod 2 Then
-                'append characters in the literal up to and including the 2nd double quote
-                strTextNew &= chrNew
-                Continue For
-            End If
-
-            'if there are an odd number of % characters then it means we are inside a string literal (e.g. inside '" - "')
-            'Note:  this check is needed to ensure that special characters (e.g. brackets or operator characters) inside string literals are ignored
-            If Not IsNothing(strTextNew) AndAlso strTextNew.Where(Function(c) c = Chr(34)).Count Mod 2 Then
-                'append characters in the literal up to and including the 2nd double quote
-                strTextNew &= chrNew
-                Continue For
-            End If
-
-            'if new char is a reserved single char lexeme but is not joined to previous text as part of a multi-char reserved lexeme
-            'e.g. new char is '-' but is not part of '<-'
-            'OR 
-            '  new char is NOT a single char reserved lexeme and previous text is a valid lexeme
-            'If (IsReserved(chrNew) AndAlso (Not IsReserved(strTextNew & chrNew))) Or
-            '           ((Not IsReserved(chrNew)) AndAlso IsReserved(strTextNew)) Then
             If IsValidLexeme(strTextNew & chrNew) Then
                 strTextNew &= chrNew
             Else
@@ -73,10 +56,10 @@ Public Class clsRScript
             End If
         Next
 
-        'if text remains that is not yet added to tree (occurs when string does not end in ')')
-        If Not IsNothing(strTextNew) Then
-            lstLexemes.Add(strTextNew)
-        End If
+        ''if text remains that is not yet added to tree (occurs when string does not end in ')')
+        'If Not IsNothing(strTextNew) Then
+        lstLexemes.Add(strTextNew)
+        'End If
 
         Return lstLexemes
     End Function
@@ -95,27 +78,24 @@ Public Class clsRScript
             Return False
         End If
 
-        'if string is >1 char and ends in newline
-        '(useful to do this test first because it simplifies the regular expressions below)
-        If Not strNew = vbCrLf AndAlso Regex.IsMatch(strNew, ".+\n$") Then
-            Return False
-        End If
-
-        'if string is a user-defined operator followed by another character
-        If Regex.IsMatch(strNew, "^%.*%.+") Then
+        If Not strNew = vbCrLf AndAlso Regex.IsMatch(strNew, ".+\n$") OrElse 'string is >1 char and ends in newline (useful to do this test first because it simplifies the regular expressions below)
+                Regex.IsMatch(strNew, ".+\r$") OrElse                        'string is >1 char and ends in carriage return
+                Regex.IsMatch(strNew, "^%.*%.+") OrElse                      'string is a user-defined operator followed by another character
+                Regex.IsMatch(strNew, "^"".*"".+") Then                      'string is a quoted string followed by another character
             Return False
         End If
 
         'if string is a valid ...
-        If Regex.IsMatch(strNew, "^[a-zA-Z0-9_\.]+$") OrElse 'variable name (or keyword name)
+        If Regex.IsMatch(strNew, "^[a-zA-Z0-9_\.]+$") OrElse 'variable name or keyword name (rules for variable names are actually stricter than this but this library assumes it is parsing valid R code)
                 arrROperators.Contains(strNew) OrElse        'operator (e.g. '+')
                 arrROperatorBrackets.Contains(strNew) OrElse 'bracket operator (e.g. '[')
                 arrRPartialOperators.Contains(strNew) OrElse 'partial operator (e.g. ':')
                 arrRSeperators.Contains(strNew) OrElse       'separator (e.g. ',')
                 arrRBrackets.Contains(strNew) OrElse         'bracket (e.g. '{')
                 Regex.IsMatch(strNew, "^ *$") OrElse         'sequence of spaces
-                Regex.IsMatch(strNew, "^%.*%$") OrElse       'user-defined operator (starts and ends with '%', e.g. '%>%')
-                Regex.IsMatch(strNew, "^%.*") Then           'partial user-defined Operator (contains only '%*')
+                Regex.IsMatch(strNew, "^"".*") OrElse        'quoted string (starts with '"*')
+                Regex.IsMatch(strNew, "^%.*") OrElse         'user-defined Operator (starts with '%*')
+                Regex.IsMatch(strNew, "^#.*") Then           'comment (starts with '#*')
             Return True
         End If
 
