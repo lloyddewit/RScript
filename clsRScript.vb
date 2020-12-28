@@ -63,7 +63,7 @@ Public Class clsRScript
 
     Public Function GetLstTokens(lstLexemes As List(Of String)) As List(Of clsRToken)
 
-        If lstLexemes IsNot Nothing AndAlso lstLexemes.Count = 0 Then
+        If lstLexemes Is Nothing OrElse lstLexemes.Count = 0 Then
             'TODO throw exception
             Return Nothing
         End If
@@ -73,7 +73,7 @@ Public Class clsRScript
         Dim strLexemeCurrent As String = ""
         Dim strLexemeNext As String
 
-        For intPos As Integer = intPos To lstLexemes.Count - 1
+        For intPos As Integer = 0 To lstLexemes.Count - 1
 
             'store previous non-space lexeme
             If Not String.IsNullOrEmpty(strLexemeCurrent) AndAlso Not Regex.IsMatch(strLexemeCurrent, "^ *$") Then
@@ -151,23 +151,23 @@ Public Class clsRScript
 
         If Regex.IsMatch(strLexemeCurrent, "^[a-zA-Z0-9_\.]+$") Then 'syntactic name or keyword
             clsRTokenNew.enuToken = clsRToken.typToken.RSyntacticName
-        ElseIf Regex.IsMatch(strLexemeCurrent, "^ *$") Then          'sequence of spaces
-            clsRTokenNew.enuToken = clsRToken.typToken.RSpace
         ElseIf Regex.IsMatch(strLexemeCurrent, "^#.*") Then          'comment (starts with '#*')
             clsRTokenNew.enuToken = clsRToken.typToken.RComment
         ElseIf Regex.IsMatch(strLexemeCurrent, "^"".*") Then         'string literal (starts with '"*')
             clsRTokenNew.enuToken = clsRToken.typToken.RStringLiteral
         ElseIf arrRSeperators.Contains(strLexemeCurrent) Then        'separator (e.g. ',')
             clsRTokenNew.enuToken = clsRToken.typToken.RSeparator
+        ElseIf Regex.IsMatch(strLexemeCurrent, "^ *$") Then          'sequence of spaces (needs to be after separator check, 
+            clsRTokenNew.enuToken = clsRToken.typToken.RSpace        '        else linefeed is recognised as space)
         ElseIf arrRBrackets.Contains(strLexemeCurrent) Then          'bracket (e.g. '{')
             clsRTokenNew.enuToken = clsRToken.typToken.RBracket
         ElseIf arrROperatorBrackets.Contains(strLexemeCurrent) Then  'bracket operator (e.g. '[')
             clsRTokenNew.enuToken = clsRToken.typToken.ROperatorBracket
         ElseIf String.IsNullOrEmpty(strLexemePrev) OrElse            'unary right operator (e.g. '!x')
-                Not Regex.IsMatch(strLexemePrev, "^[a-zA-Z0-9_\.]+$") Then
+                Not Regex.IsMatch(strLexemePrev, "[a-zA-Z0-9_\.)\]]$") Then
             clsRTokenNew.enuToken = clsRToken.typToken.ROperatorUnaryRight
         ElseIf String.IsNullOrEmpty(strLexemeNext) OrElse            'unary left operator (e.g. x~)
-                Not Regex.IsMatch(strLexemeNext, "^[a-zA-Z0-9_\.]+$") Then
+                Not Regex.IsMatch(strLexemeNext, "^[a-zA-Z0-9_\.(]") Then
             clsRTokenNew.enuToken = clsRToken.typToken.ROperatorUnaryLeft
         Else                                                         'binary operator (e.g. '+')
             clsRTokenNew.enuToken = clsRToken.typToken.ROperatorBinary
