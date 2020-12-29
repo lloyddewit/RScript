@@ -12,6 +12,11 @@ Public Class clsRScript
     Private ReadOnly arrRBrackets() As String = {"(", ")", "{", "}"}
     Private ReadOnly arrRSeperators() As String = {",", ";", vbCr, vbLf, vbCrLf}
 
+    '''--------------------------------------------------------------------------------------------
+    ''' <summary>   Constructor. </summary>
+    '''
+    ''' <param name="strInput"> The input. </param>
+    '''--------------------------------------------------------------------------------------------
     Public Sub New(strInput As String)
         If IsNothing(strInput) Then
             Exit Sub
@@ -22,19 +27,24 @@ Public Class clsRScript
     End Sub
 
     '''--------------------------------------------------------------------------------------------
-    ''' <summary>   Returns <paramref name="strRScript"/> as a list of its constituent lexemes 
-    '''             A lexeme is a string of characters that represent a valid R element (identifier, operator, keyword, seperator, bracket etc.)
-    '''             The lexem is just a string, it does not include any type information
-    '''             This function identifies lexemes using a technique known as 'longest match' or 'maximal munch'
-    '''             It processes the input characters one at a time until it reaches a character that is not in the set of characters acceptable for that lexeme (i.e. a sequence of characters that are not a valid R element)
-    '''             This function assumes that <paramref name="strRScript"/> is a syntactically correct R script.
-    '''             This function does not attempt to validate <paramref name="strRScript"/>.
-    '''             If <paramref name="strRScript"/> is not a syntactically correct R script then the values returned by this function will also be invalid.
-    '''             </summary>
+    ''' <summary>   Returns <paramref name="strRScript"/> as a list of its constituent lexemes. 
+    '''             A lexeme is a string of characters that represent a valid R element 
+    '''             (identifier, operator, keyword, seperator, bracket etc.). A lexeme does not 
+    '''             include any type information.<para>
+    '''             This function identifies lexemes using a technique known as 'longest match' 
+    '''             or 'maximal munch'. It keeps adding characters to the lexeme one at a time 
+    '''             until it reaches a character that is not in the set of characters acceptable 
+    '''             for that lexeme.
+    '''             </para><para>
+    '''             This function assumes that <paramref name="strRScript"/> is a syntactically 
+    '''             correct R script. This function does not attempt to validate 
+    '''             <paramref name="strRScript"/>. If <paramref name="strRScript"/> is not 
+    '''             syntactically correct then the values returned by this function will also be 
+    '''             invalid.</para></summary>
     '''
-    ''' <param name="strRScript"> The input. </param>
+    ''' <param name="strRScript"> The R script to convert (must be syntactically correct R). </param>
     '''
-    ''' <returns>   The list lexemes. </returns>
+    ''' <returns>   <paramref name="strRScript"/> as a list of its constituent lexemes. </returns>
     '''--------------------------------------------------------------------------------------------
     Public Function GetLstLexemes(strRScript As String) As List(Of String)
 
@@ -45,11 +55,36 @@ Public Class clsRScript
 
         Dim lstLexemes = New List(Of String)
         Dim strTextNew As String = Nothing
+        Dim stkIsSingleBracket As Stack(Of Boolean) = New Stack(Of Boolean)
 
         For Each chrNew As Char In strRScript
-            If IsValidLexeme(strTextNew & chrNew) Then
+            If IsValidLexeme(strTextNew & chrNew) AndAlso
+                    Not ((strTextNew & chrNew) = "]]" AndAlso
+                    (stkIsSingleBracket.Count < 1 OrElse stkIsSingleBracket.Peek())) Then
                 strTextNew &= chrNew
             Else
+                'Edge case: We need to handle nested operator brackets e.g. 'k[[l[[m[6]]]]]'. 
+                '           For the above example, we need to recognise that the ']' to the right 
+                '           of '6' is a single ']' bracket and is not part of a double ']]' bracket.
+                '           To achieve this, we push each open bracket to a stack so that we know 
+                '           which type of closing bracket is expected for each open bracket.
+                If arrROperatorBrackets.Contains(strTextNew) Then
+                    Select Case strTextNew
+                        Case "["
+                            stkIsSingleBracket.Push(True)
+                        Case "[["
+                            stkIsSingleBracket.Push(False)
+                        Case "]"
+                            If stkIsSingleBracket.Count > 0 Then
+                                stkIsSingleBracket.Pop()
+                            End If
+                        Case "]]"
+                            If stkIsSingleBracket.Count > 0 Then
+                                stkIsSingleBracket.Pop()
+                            End If
+                    End Select
+                End If
+
                 'add 'strTextNew' element to list
                 lstLexemes.Add(strTextNew)
                 strTextNew = chrNew
@@ -61,6 +96,16 @@ Public Class clsRScript
         Return lstLexemes
     End Function
 
+    '''--------------------------------------------------------------------------------------------
+    ''' <summary>   Returns <paramref name="lstLexemes"/> as a list of its tokens.
+    '''             A token is a string of characters that represent a valid R element, plus meta data about the token type (identifier, operator, keyword, seperator, bracket etc.). 
+    '''             
+    '''             </summary>
+    '''
+    ''' <param name="lstLexemes">   The list lexemes. </param>
+    '''
+    ''' <returns>   The list tokens. </returns>
+    '''--------------------------------------------------------------------------------------------
     Public Function GetLstTokens(lstLexemes As List(Of String)) As List(Of clsRToken)
 
         If lstLexemes Is Nothing OrElse lstLexemes.Count = 0 Then
@@ -76,7 +121,8 @@ Public Class clsRScript
         For intPos As Integer = 0 To lstLexemes.Count - 1
 
             'store previous non-space lexeme
-            If Not String.IsNullOrEmpty(strLexemeCurrent) AndAlso Not Regex.IsMatch(strLexemeCurrent, "^ *$") Then
+            If Not String.IsNullOrEmpty(strLexemeCurrent) AndAlso
+                    Not IsSequenceOfSpaces(strLexemeCurrent) Then
                 strLexemePrev = strLexemeCurrent
             End If
 
@@ -84,11 +130,10 @@ Public Class clsRScript
 
             'find next non-space lexeme
             strLexemeNext = Nothing
-            Dim strLexemeTmp As String
             For intNextPos As Integer = intPos + 1 To lstLexemes.Count - 1
-                strLexemeTmp = lstLexemes.Item(intNextPos)
-                If Not String.IsNullOrEmpty(strLexemeTmp) AndAlso Not Regex.IsMatch(strLexemeTmp, "^ *$") Then
-                    strLexemeNext = strLexemeTmp
+                If Not String.IsNullOrEmpty(lstLexemes.Item(intNextPos)) AndAlso
+                        Not IsSequenceOfSpaces(lstLexemes.Item(intNextPos)) Then
+                    strLexemeNext = lstLexemes.Item(intNextPos)
                     Exit For
                 End If
             Next intNextPos
@@ -128,7 +173,7 @@ Public Class clsRScript
                 arrRPartialOperators.Contains(strNew) OrElse 'partial operator (e.g. ':')
                 arrRSeperators.Contains(strNew) OrElse       'separator (e.g. ',')
                 arrRBrackets.Contains(strNew) OrElse         'bracket (e.g. '{')
-                Regex.IsMatch(strNew, "^ *$") OrElse         'sequence of spaces
+                IsSequenceOfSpaces(strNew) OrElse            'sequence of spaces
                 Regex.IsMatch(strNew, "^"".*") OrElse        'quoted string (starts with '"*')
                 Regex.IsMatch(strNew, "^%.*") OrElse         'user-defined Operator (starts with '%*')
                 Regex.IsMatch(strNew, "^#.*") Then           'comment (starts with '#*')
@@ -157,7 +202,7 @@ Public Class clsRScript
             clsRTokenNew.enuToken = clsRToken.typToken.RStringLiteral
         ElseIf arrRSeperators.Contains(strLexemeCurrent) Then        'separator (e.g. ',')
             clsRTokenNew.enuToken = clsRToken.typToken.RSeparator
-        ElseIf Regex.IsMatch(strLexemeCurrent, "^ *$") Then          'sequence of spaces (needs to be after separator check, 
+        ElseIf IsSequenceOfSpaces(strLexemeCurrent) Then             'sequence of spaces (needs to be after separator check, 
             clsRTokenNew.enuToken = clsRToken.typToken.RSpace        '        else linefeed is recognised as space)
         ElseIf arrRBrackets.Contains(strLexemeCurrent) Then          'bracket (e.g. '{')
             clsRTokenNew.enuToken = clsRToken.typToken.RBracket
@@ -176,4 +221,19 @@ Public Class clsRScript
         Return clsRTokenNew
     End Function
 
+    '''--------------------------------------------------------------------------------------------
+    ''' <summary>   Returns true if <paramref name="strTxt"/> is sequence of spaces (and no other 
+    '''             characters), else returns false. </summary>
+    '''
+    ''' <param name="strTxt">   The text to check for spaces. </param>
+    '''
+    ''' <returns>   True  if <paramref name="strTxt"/> is sequence of spaces (and no other 
+    '''             characters), else returns false. </returns>
+    '''--------------------------------------------------------------------------------------------
+    Private Function IsSequenceOfSpaces(strTxt As String) As Boolean
+        If Not String.IsNullOrEmpty(strTxt) AndAlso Regex.IsMatch(strTxt, "^ *$") Then
+            Return True
+        End If
+        Return False
+    End Function
 End Class
