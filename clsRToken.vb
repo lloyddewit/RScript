@@ -1,7 +1,8 @@
 ﻿Public Class clsRToken
     Public Enum typToken
         RSyntacticName
-        RStringLiteral
+        RKeyWord
+        RConstantString
         RComment
         RSpace
         RBracket

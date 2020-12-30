@@ -11,9 +11,12 @@ Public Class clsRScript
     Private ReadOnly arrRPartialOperators() As String = {"<<"}
     Private ReadOnly arrRBrackets() As String = {"(", ")", "{", "}"}
     Private ReadOnly arrRSeperators() As String = {",", ";", vbCr, vbLf, vbCrLf}
+    Private ReadOnly arrKeyWords() As String = {"if", "else", "repeat", "while", "function", "for", "in", "next", "break"}
+    'TODO There are five types of constants: integer, logical, numeric, complex and string
+    'TODO Private ReadOnly arrSpecialConstants() As String = {"NULL", "NA", "Inf", "NaN"}
 
     '''--------------------------------------------------------------------------------------------
-    ''' <summary>   Constructor. </summary>
+    ''' <summary>   Constructor TODO. </summary>
     '''
     ''' <param name="strInput"> The input. </param>
     '''--------------------------------------------------------------------------------------------
@@ -59,7 +62,7 @@ Public Class clsRScript
 
         For Each chrNew As Char In strRScript
             If IsValidLexeme(strTextNew & chrNew) AndAlso
-                    Not ((strTextNew & chrNew) = "]]" AndAlso
+                    Not ((strTextNew & chrNew) = "]]" AndAlso 'edge case for nested operator brackets
                     (stkIsSingleBracket.Count < 1 OrElse stkIsSingleBracket.Peek())) Then
                 strTextNew &= chrNew
             Else
@@ -145,12 +148,12 @@ Public Class clsRScript
     End Function
 
     '''--------------------------------------------------------------------------------------------
-    ''' <summary>   Query if 'strNew' is valid lexeme.
-    '''              </summary>
+    ''' <summary>   Returns true if <paramref name="strNew"/> is valid lexeme, else returns false.
+    '''             </summary>
     '''
-    ''' <param name="strNew">   A sequence of characters taken from a syntactically correct R script </param>
+    ''' <param name="strNew">   A sequence of characters from a syntactically correct R script </param>
     '''
-    ''' <returns>   True if valid lexeme, false if not. </returns>
+    ''' <returns>   True if <paramref name="strNew"/> is a valid lexeme, else returns false. </returns>
     '''--------------------------------------------------------------------------------------------
     Private Function IsValidLexeme(strNew As String) As Boolean
 
@@ -162,27 +165,37 @@ Public Class clsRScript
         If Not strNew = vbCrLf AndAlso Regex.IsMatch(strNew, ".+\n$") OrElse 'string is >1 char and ends in newline (useful to do this test first because it simplifies the regular expressions below)
                 Regex.IsMatch(strNew, ".+\r$") OrElse                        'string is >1 char and ends in carriage return
                 Regex.IsMatch(strNew, "^%.*%.+") OrElse                      'string is a user-defined operator followed by another character
-                Regex.IsMatch(strNew, "^"".*"".+") Then                      'string is a quoted string followed by another character
+                Regex.IsMatch(strNew, "^'.*'.+") OrElse                      'string is a single quoted string followed by another character
+                Regex.IsMatch(strNew, "^"".*"".+") Then                      'string is a double quoted string followed by another character
             Return False
         End If
 
         'if string is a valid ...
-        If Regex.IsMatch(strNew, "^[a-zA-Z0-9_\.]+$") OrElse 'syntactic name or keyword (rules for syntactic names are actually stricter than this but this library assumes it is parsing valid R code)
+        If IsSyntacticName(strNew) OrElse                    'syntactic name or reserved word
                 arrROperators.Contains(strNew) OrElse        'operator (e.g. '+')
                 arrROperatorBrackets.Contains(strNew) OrElse 'bracket operator (e.g. '[')
                 arrRPartialOperators.Contains(strNew) OrElse 'partial operator (e.g. ':')
                 arrRSeperators.Contains(strNew) OrElse       'separator (e.g. ',')
                 arrRBrackets.Contains(strNew) OrElse         'bracket (e.g. '{')
                 IsSequenceOfSpaces(strNew) OrElse            'sequence of spaces
-                Regex.IsMatch(strNew, "^"".*") OrElse        'quoted string (starts with '"*')
-                Regex.IsMatch(strNew, "^%.*") OrElse         'user-defined Operator (starts with '%*')
-                Regex.IsMatch(strNew, "^#.*") Then           'comment (starts with '#*')
+                IsConstantString(strNew) OrElse              'string constant (starts with single or double)
+                Regex.IsMatch(strNew, "^%.*") OrElse         'user-defined operator (starts with '%*')
+                IsComment(strNew) Then                       'comment (starts with '#*')
             Return True
         End If
 
         Return False
     End Function
 
+    '''--------------------------------------------------------------------------------------------
+    ''' <summary>   TODO Gets r token. </summary>
+    '''
+    ''' <param name="strLexemePrev">    The lexeme previous. </param>
+    ''' <param name="strLexemeCurrent"> The lexeme current. </param>
+    ''' <param name="strLexemeNext">    The lexeme next. </param>
+    '''
+    ''' <returns>   The r token. </returns>
+    '''--------------------------------------------------------------------------------------------
     Private Function GetRToken(strLexemePrev As String, strLexemeCurrent As String, strLexemeNext As String) As clsRToken
 
         If String.IsNullOrEmpty(strLexemeCurrent) Then
@@ -194,12 +207,14 @@ Public Class clsRScript
             .strText = strLexemeCurrent
         }
 
-        If Regex.IsMatch(strLexemeCurrent, "^[a-zA-Z0-9_\.]+$") Then 'syntactic name or keyword
+        If arrKeyWords.Contains(strLexemeCurrent) Then               'resrved key word (e.g. if, else etc.)
+            clsRTokenNew.enuToken = clsRToken.typToken.RKeyWord
+        ElseIf IsSyntacticName(strLexemeCurrent) Then                'syntactic name 
             clsRTokenNew.enuToken = clsRToken.typToken.RSyntacticName
-        ElseIf Regex.IsMatch(strLexemeCurrent, "^#.*") Then          'comment (starts with '#*')
+        ElseIf IsComment(strLexemeCurrent) Then                      'comment (starts with '#*')
             clsRTokenNew.enuToken = clsRToken.typToken.RComment
-        ElseIf Regex.IsMatch(strLexemeCurrent, "^"".*") Then         'string literal (starts with '"*')
-            clsRTokenNew.enuToken = clsRToken.typToken.RStringLiteral
+        ElseIf IsConstantString(strLexemeCurrent) Then               'string literal (starts with single or double quote)
+            clsRTokenNew.enuToken = clsRToken.typToken.RConstantString
         ElseIf arrRSeperators.Contains(strLexemeCurrent) Then        'separator (e.g. ',')
             clsRTokenNew.enuToken = clsRToken.typToken.RSeparator
         ElseIf IsSequenceOfSpaces(strLexemeCurrent) Then             'sequence of spaces (needs to be after separator check, 
@@ -222,10 +237,66 @@ Public Class clsRScript
     End Function
 
     '''--------------------------------------------------------------------------------------------
+    ''' <summary>   Returns true if <paramref name="strTxt"/> is a valid R syntactic name or 
+    '''             key word, else returns false.<para>
+    '''             Please note that the rules for syntactic names are actually stricter than 
+    '''             the rules used in this function, but this library assumes it is parsing valid 
+    '''             R code. </para></summary>
+    '''
+    ''' <param name="strTxt">   The text to check. </param>
+    '''
+    ''' <returns>   True if <paramref name="strTxt"/> is a valid R syntactic name or key word, 
+    '''             else returns false.</returns>
+    '''--------------------------------------------------------------------------------------------
+    Private Function IsSyntacticName(strTxt As String) As Boolean
+        If Not String.IsNullOrEmpty(strTxt) AndAlso Regex.IsMatch(strTxt, "^[a-zA-Z0-9_\.]+$") Then
+            Return True
+        End If
+        Return False
+    End Function
+
+    '''--------------------------------------------------------------------------------------------
+    ''' <summary>   Returns true if <paramref name="strTxt"/> is a complete or partial string 
+    '''             constant, else returns false.<para>
+    '''             String constants are delimited by a pair of single (‘'’) or double (‘"’) quotes 
+    '''             and can contain all other printable characters. Quotes and other special 
+    '''             characters within strings are specified using escape sequences. </para></summary>
+    '''
+    ''' <param name="strTxt">   The text to check. </param>
+    '''
+    ''' <returns>   True if <paramref name="strTxt"/> is a valid R syntactic name or key word, 
+    '''             else returns false.</returns>
+    '''--------------------------------------------------------------------------------------------
+    Private Function IsConstantString(strTxt As String) As Boolean
+        If Not String.IsNullOrEmpty(strTxt) AndAlso
+            (Regex.IsMatch(strTxt, "^"".*") OrElse (Regex.IsMatch(strTxt, "^'.*"))) Then
+            Return True
+        End If
+        Return False
+    End Function
+
+    '''--------------------------------------------------------------------------------------------
+    ''' <summary>   Returns true if <paramref name="strTxt"/> is a comment, else returns false.
+    '''             <para>
+    '''             Any text from a # character to the end of the line is taken to be a comment,
+    '''             unless the # character is inside a quoted string. </para></summary>
+    '''
+    ''' <param name="strTxt">   The text to check. </param>
+    '''
+    ''' <returns>   True if <paramref name="strTxt"/> is a comment, else returns false.</returns>
+    '''--------------------------------------------------------------------------------------------
+    Private Function IsComment(strTxt As String) As Boolean
+        If Not String.IsNullOrEmpty(strTxt) AndAlso Regex.IsMatch(strTxt, "^#.*") Then
+            Return True
+        End If
+        Return False
+    End Function
+
+    '''--------------------------------------------------------------------------------------------
     ''' <summary>   Returns true if <paramref name="strTxt"/> is sequence of spaces (and no other 
     '''             characters), else returns false. </summary>
     '''
-    ''' <param name="strTxt">   The text to check for spaces. </param>
+    ''' <param name="strTxt">   The text to check . </param>
     '''
     ''' <returns>   True  if <paramref name="strTxt"/> is sequence of spaces (and no other 
     '''             characters), else returns false. </returns>
