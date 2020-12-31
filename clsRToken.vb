@@ -1,4 +1,10 @@
-﻿Public Class clsRToken
+﻿'---------------------------------------------------------------------------------------------------
+' file:		clsRToken.vb
+'
+' summary:	TBD
+'---------------------------------------------------------------------------------------------------
+Public Class clsRToken
+    ''' <summary>   Values that represent TBD. </summary>
     Public Enum typToken
         RSyntacticName
         RKeyWord
@@ -7,12 +13,18 @@
         RSpace
         RBracket
         RSeparator
+        REndStatement
+        REndScript
+        RNewLine
         ROperatorUnaryLeft
         ROperatorUnaryRight
         ROperatorBinary
         ROperatorBracket
+        RInvalid
     End Enum
 
+    ''' <summary>   TBD. </summary>
     Public strText As String
+    ''' <summary>   TBD. </summary>
     Public enuToken As typToken
 End Class

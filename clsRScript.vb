@@ -8,9 +8,10 @@ Public Class clsRScript
         "%*%", "%o%", "%x%", "%in%", "/", "*", "+", "-", "<", ">", "<=", ">=", "==", "!=", "!", "&",
         "&&", "|", "||", "~", "->", "->>", "<-", "<<-", "="}
     Private ReadOnly arrROperatorBrackets() As String = {"[", "]", "[[", "]]"}
+    Private ReadOnly arrROperatorUnary() As String = {"+", "-", "!", "~"}
     Private ReadOnly arrRPartialOperators() As String = {"<<"}
     Private ReadOnly arrRBrackets() As String = {"(", ")", "{", "}"}
-    Private ReadOnly arrRSeperators() As String = {",", ";", vbCr, vbLf, vbCrLf}
+    Private ReadOnly arrRNewLines() As String = {vbCr, vbLf, vbCrLf}
     Private ReadOnly arrKeyWords() As String = {"if", "else", "repeat", "while", "function", "for", "in", "next", "break"}
     'TODO There are five types of constants: integer, logical, numeric, complex and string
     'TODO Private ReadOnly arrSpecialConstants() As String = {"NULL", "NA", "Inf", "NaN"}
@@ -52,7 +53,6 @@ Public Class clsRScript
     Public Function GetLstLexemes(strRScript As String) As List(Of String)
 
         If (String.IsNullOrEmpty(strRScript)) Then
-            'TODO throw exception
             Return Nothing
         End If
 
@@ -100,19 +100,18 @@ Public Class clsRScript
     End Function
 
     '''--------------------------------------------------------------------------------------------
-    ''' <summary>   Returns <paramref name="lstLexemes"/> as a list of its tokens.
-    '''             A token is a string of characters that represent a valid R element, plus meta data about the token type (identifier, operator, keyword, seperator, bracket etc.). 
-    '''             
-    '''             </summary>
+    ''' <summary>   Returns <paramref name="lstLexemes"/> as a list of tokens.<para>
+    '''             A token is a string of characters that represent a valid R element, plus meta 
+    '''             data about the token type (identifier, operator, keyword, bracket etc.). 
+    '''             </para></summary>
     '''
-    ''' <param name="lstLexemes">   The list lexemes. </param>
+    ''' <param name="lstLexemes">   The list of lexemes to convert to tokens. </param>
     '''
-    ''' <returns>   The list tokens. </returns>
+    ''' <returns>   <paramref name="lstLexemes"/> as a list of tokens. </returns>
     '''--------------------------------------------------------------------------------------------
     Public Function GetLstTokens(lstLexemes As List(Of String)) As List(Of clsRToken)
 
         If lstLexemes Is Nothing OrElse lstLexemes.Count = 0 Then
-            'TODO throw exception
             Return Nothing
         End If
 
@@ -120,12 +119,15 @@ Public Class clsRScript
         Dim strLexemePrev As String = ""
         Dim strLexemeCurrent As String = ""
         Dim strLexemeNext As String
+        Dim bScriptComplete As Boolean = False
+        Dim bStatementComplete As Boolean = False
+        Dim clsToken As clsRToken
+        Dim iOpenBrackets As Integer = 0
 
         For intPos As Integer = 0 To lstLexemes.Count - 1
 
             'store previous non-space lexeme
-            If Not String.IsNullOrEmpty(strLexemeCurrent) AndAlso
-                    Not IsSequenceOfSpaces(strLexemeCurrent) Then
+            If IsRElement(strLexemeCurrent) Then
                 strLexemePrev = strLexemeCurrent
             End If
 
@@ -141,7 +143,31 @@ Public Class clsRScript
                 End If
             Next intNextPos
 
-            lstRTokens.Add(GetRToken(strLexemePrev, strLexemeCurrent, strLexemeNext))
+            'identify the token associated with the current lexeme and add the token to the list
+            clsToken = GetRToken(strLexemePrev, strLexemeCurrent, strLexemeNext,
+                                 bScriptComplete, bStatementComplete)
+            lstRTokens.Add(clsToken)
+
+            'determine whether the current sequence of tokens makes a complete valid R statement
+            '    This is needed to determine whether a newline marks the end of the statement
+            '    or is just for presentation.
+            '    The current sequence of tokens is considered a complete valid R statement if it 
+            '    has no open brackets and it does not end in an operator.
+            If IsRElement(strLexemeCurrent) Then
+                If clsToken.strText = "(" OrElse clsToken.strText = "[" OrElse clsToken.strText = "[[" Then
+                    iOpenBrackets += 1
+                ElseIf clsToken.strText = ")" OrElse clsToken.strText = "]" OrElse clsToken.strText = "]]" Then
+                    iOpenBrackets -= 1
+                End If
+
+                If iOpenBrackets > 0 OrElse
+                    (clsToken.enuToken = clsRToken.typToken.ROperatorBinary AndAlso
+                     Not clsToken.strText = "~") Then 'tilda is the only operator that doesn't need a right-hand value
+                    bStatementComplete = False
+                Else
+                    bStatementComplete = True
+                End If
+            End If
         Next intPos
 
         Return lstRTokens
@@ -158,7 +184,6 @@ Public Class clsRScript
     Private Function IsValidLexeme(strNew As String) As Boolean
 
         If (String.IsNullOrEmpty(strNew)) Then
-            'TODO throw exception
             Return False
         End If
 
@@ -175,7 +200,8 @@ Public Class clsRScript
                 arrROperators.Contains(strNew) OrElse        'operator (e.g. '+')
                 arrROperatorBrackets.Contains(strNew) OrElse 'bracket operator (e.g. '[')
                 arrRPartialOperators.Contains(strNew) OrElse 'partial operator (e.g. ':')
-                arrRSeperators.Contains(strNew) OrElse       'separator (e.g. ',')
+                arrRNewLines.Contains(strNew) OrElse         'newlines (e.g. '\n')
+                strNew = "," OrElse strNew = ";" OrElse      'parameter separator or end statement
                 arrRBrackets.Contains(strNew) OrElse         'bracket (e.g. '{')
                 IsSequenceOfSpaces(strNew) OrElse            'sequence of spaces
                 IsConstantString(strNew) OrElse              'string constant (starts with single or double)
@@ -188,18 +214,26 @@ Public Class clsRScript
     End Function
 
     '''--------------------------------------------------------------------------------------------
-    ''' <summary>   TODO Gets r token. </summary>
+    ''' <summary>   Returns <paramref name="strLexemeCurrent"/> as a token. <para>
+    '''             A token is a string of characters that represent a valid R element, plus meta
+    '''             data about the token type (identifier, operator, keyword, bracket etc.).
+    '''             </para><para>
+    '''             <paramref name="strLexemePrev"/> and <paramref name="strLexemeNext"/> are needed
+    '''             to correctly identify if <paramref name="strLexemeCurrent"/> is a unary or 
+    '''             binary operator.</para></summary>
     '''
-    ''' <param name="strLexemePrev">    The lexeme previous. </param>
-    ''' <param name="strLexemeCurrent"> The lexeme current. </param>
-    ''' <param name="strLexemeNext">    The lexeme next. </param>
+    ''' <param name="strLexemePrev">    The non-space lexeme immediately to the left of 
+    '''                                 <paramref name="strLexemeCurrent"/>. </param>
+    ''' <param name="strLexemeCurrent"> The lexeme to convert to a token. </param>
+    ''' <param name="strLexemeNext">    The non-space lexeme immediately to the right of
+    '''                                 <paramref name="strLexemeCurrent"/>. </param>
     '''
-    ''' <returns>   The r token. </returns>
+    ''' <returns>   <paramref name="strLexemeCurrent"/> as a token. </returns>
     '''--------------------------------------------------------------------------------------------
-    Private Function GetRToken(strLexemePrev As String, strLexemeCurrent As String, strLexemeNext As String) As clsRToken
+    Private Function GetRToken(strLexemePrev As String, strLexemeCurrent As String, strLexemeNext As String,
+                               bScriptComplete As Boolean, bStatementComplete As Boolean) As clsRToken
 
         If String.IsNullOrEmpty(strLexemeCurrent) Then
-            'TODO throw exception
             Return Nothing
         End If
 
@@ -207,7 +241,7 @@ Public Class clsRScript
             .strText = strLexemeCurrent
         }
 
-        If arrKeyWords.Contains(strLexemeCurrent) Then               'resrved key word (e.g. if, else etc.)
+        If arrKeyWords.Contains(strLexemeCurrent) Then               'reserved key word (e.g. if, else etc.)
             clsRTokenNew.enuToken = clsRToken.typToken.RKeyWord
         ElseIf IsSyntacticName(strLexemeCurrent) Then                'syntactic name 
             clsRTokenNew.enuToken = clsRToken.typToken.RSyntacticName
@@ -215,22 +249,41 @@ Public Class clsRScript
             clsRTokenNew.enuToken = clsRToken.typToken.RComment
         ElseIf IsConstantString(strLexemeCurrent) Then               'string literal (starts with single or double quote)
             clsRTokenNew.enuToken = clsRToken.typToken.RConstantString
-        ElseIf arrRSeperators.Contains(strLexemeCurrent) Then        'separator (e.g. ',')
+        ElseIf arrRNewLines.Contains(strLexemeCurrent) Then          'new line (e.g. '\n')
+            If bScriptComplete Then
+                clsRTokenNew.enuToken = clsRToken.typToken.REndScript
+            ElseIf bStatementComplete Then
+                clsRTokenNew.enuToken = clsRToken.typToken.REndStatement
+            Else
+                clsRTokenNew.enuToken = clsRToken.typToken.RNewLine
+            End If
+        ElseIf strLexemeCurrent = ";" Then                           'end statement
+            clsRTokenNew.enuToken = clsRToken.typToken.REndStatement
+        ElseIf strLexemeCurrent = "," Then                           'parameter separator
             clsRTokenNew.enuToken = clsRToken.typToken.RSeparator
         ElseIf IsSequenceOfSpaces(strLexemeCurrent) Then             'sequence of spaces (needs to be after separator check, 
             clsRTokenNew.enuToken = clsRToken.typToken.RSpace        '        else linefeed is recognised as space)
         ElseIf arrRBrackets.Contains(strLexemeCurrent) Then          'bracket (e.g. '{')
-            clsRTokenNew.enuToken = clsRToken.typToken.RBracket
+            If strLexemeCurrent = "}" Then
+                clsRTokenNew.enuToken = clsRToken.typToken.REndScript
+            Else
+                clsRTokenNew.enuToken = clsRToken.typToken.RBracket
+            End If
         ElseIf arrROperatorBrackets.Contains(strLexemeCurrent) Then  'bracket operator (e.g. '[')
             clsRTokenNew.enuToken = clsRToken.typToken.ROperatorBracket
-        ElseIf String.IsNullOrEmpty(strLexemePrev) OrElse            'unary right operator (e.g. '!x')
-                Not Regex.IsMatch(strLexemePrev, "[a-zA-Z0-9_\.)\]]$") Then
+        ElseIf arrROperatorUnary.Contains(strLexemeCurrent) AndAlso  'unary right operator (e.g. '!x')
+                (String.IsNullOrEmpty(strLexemePrev) OrElse
+                Not Regex.IsMatch(strLexemePrev, "[a-zA-Z0-9_\.)\]]$")) Then
             clsRTokenNew.enuToken = clsRToken.typToken.ROperatorUnaryRight
-        ElseIf String.IsNullOrEmpty(strLexemeNext) OrElse            'unary left operator (e.g. x~)
-                Not Regex.IsMatch(strLexemeNext, "^[a-zA-Z0-9_\.(]") Then
+        ElseIf strLexemeCurrent = "~" AndAlso                        'unary left operator (e.g. x~)
+                (String.IsNullOrEmpty(strLexemeNext) OrElse
+                Not Regex.IsMatch(strLexemeNext, "^[a-zA-Z0-9_\.(]")) Then
             clsRTokenNew.enuToken = clsRToken.typToken.ROperatorUnaryLeft
-        Else                                                         'binary operator (e.g. '+')
+        ElseIf arrROperators.Contains(strLexemeCurrent) OrElse       'binary operator (e.g. '+')
+                Regex.IsMatch(strLexemeCurrent, "^%.*%$") Then
             clsRTokenNew.enuToken = clsRToken.typToken.ROperatorBinary
+        Else
+            clsRTokenNew.enuToken = clsRToken.typToken.RInvalid
         End If
 
         Return clsRTokenNew
@@ -303,6 +356,15 @@ Public Class clsRScript
     '''--------------------------------------------------------------------------------------------
     Private Function IsSequenceOfSpaces(strTxt As String) As Boolean
         If Not String.IsNullOrEmpty(strTxt) AndAlso Regex.IsMatch(strTxt, "^ *$") Then
+            Return True
+        End If
+        Return False
+    End Function
+
+    Private Function IsRElement(strTxt As String) As Boolean
+        If Not arrRNewLines.Contains(strTxt) AndAlso
+           Not IsSequenceOfSpaces(strTxt) AndAlso
+           Not IsComment(strTxt) Then
             Return True
         End If
         Return False
