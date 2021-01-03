@@ -24,7 +24,7 @@ Public Class clsRToken
     End Enum
 
     ''' <summary>   TBD. </summary>
-    Public strText As String
+    Public strTxt As String
     ''' <summary>   TBD. </summary>
     Public enuToken As typToken
 End Class

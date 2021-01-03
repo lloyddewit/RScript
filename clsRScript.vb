@@ -13,6 +13,15 @@ Public Class clsRScript
     Private ReadOnly arrRBrackets() As String = {"(", ")", "{", "}"}
     Private ReadOnly arrRNewLines() As String = {vbCr, vbLf, vbCrLf}
     Private ReadOnly arrKeyWords() As String = {"if", "else", "repeat", "while", "function", "for", "in", "next", "break"}
+
+    ''' <summary>   The current state of the token parsing. </summary>
+    Private Enum typTokenState
+        WaitingForOpenCondition
+        WaitingForCloseCondition
+        WaitingForStartScript
+        WaitingForEndScript
+    End Enum
+
     'TODO There are five types of constants: integer, logical, numeric, complex and string
     'TODO Private ReadOnly arrSpecialConstants() As String = {"NULL", "NA", "Inf", "NaN"}
 
@@ -119,12 +128,25 @@ Public Class clsRScript
         Dim strLexemePrev As String = ""
         Dim strLexemeCurrent As String = ""
         Dim strLexemeNext As String
-        Dim bScriptComplete As Boolean = False
         Dim bStatementComplete As Boolean = False
         Dim clsToken As clsRToken
-        Dim iOpenBrackets As Integer = 0
+
+        Dim stkNumOpenBrackets As Stack(Of Integer) = New Stack(Of Integer)
+        stkNumOpenBrackets.Push(0)
+
+        Dim stkTokenState As Stack(Of typTokenState) = New Stack(Of typTokenState)
+        stkTokenState.Push(typTokenState.WaitingForEndScript)
+
+        Dim stkIsScriptEnclosedByCurlyBrackets As Stack(Of Boolean) = New Stack(Of Boolean)
+        stkIsScriptEnclosedByCurlyBrackets.Push(True)
 
         For intPos As Integer = 0 To lstLexemes.Count - 1
+
+            If stkNumOpenBrackets.Count < 1 OrElse
+                    stkTokenState.Count < 1 OrElse
+                    stkIsScriptEnclosedByCurlyBrackets.Count < 1 Then
+                'TODO developer error
+            End If
 
             'store previous non-space lexeme
             If IsRElement(strLexemeCurrent) Then
@@ -143,31 +165,99 @@ Public Class clsRScript
                 End If
             Next intNextPos
 
-            'identify the token associated with the current lexeme and add the token to the list
-            clsToken = GetRToken(strLexemePrev, strLexemeCurrent, strLexemeNext,
-                                 bScriptComplete, bStatementComplete)
-            lstRTokens.Add(clsToken)
-
             'determine whether the current sequence of tokens makes a complete valid R statement
             '    This is needed to determine whether a newline marks the end of the statement
             '    or is just for presentation.
             '    The current sequence of tokens is considered a complete valid R statement if it 
             '    has no open brackets and it does not end in an operator.
-            If IsRElement(strLexemeCurrent) Then
-                If clsToken.strText = "(" OrElse clsToken.strText = "[" OrElse clsToken.strText = "[[" Then
-                    iOpenBrackets += 1
-                ElseIf clsToken.strText = ")" OrElse clsToken.strText = "]" OrElse clsToken.strText = "]]" Then
-                    iOpenBrackets -= 1
-                End If
+            Select Case strLexemeCurrent
+                Case "(", "[", "[["
+                    stkNumOpenBrackets.Push(stkNumOpenBrackets.Pop() + 1)
+                Case ")", "]", "]]"
+                    stkNumOpenBrackets.Push(stkNumOpenBrackets.Pop() - 1)
+                Case "if", "while", "for", "function"
+                    stkTokenState.Push(typTokenState.WaitingForOpenCondition)
+                    stkNumOpenBrackets.Push(0)
+                Case "else", "repeat"
+                    stkTokenState.Push(typTokenState.WaitingForCloseCondition) ''else' and 'repeat' keywords have no condition (e.g. 'if (x==1) y<-0 else y<-1'
+                    stkNumOpenBrackets.Push(0)                                 '    after the keyword is processed, the state will automatically change to 'WaitingForEndScript'
+            End Select
 
-                If iOpenBrackets > 0 OrElse
-                    (clsToken.enuToken = clsRToken.typToken.ROperatorBinary AndAlso
-                     Not clsToken.strText = "~") Then 'tilda is the only operator that doesn't need a right-hand value
-                    bStatementComplete = False
-                Else
-                    bStatementComplete = True
-                End If
+            'identify the token associated with the current lexeme and add the token to the list
+            clsToken = GetRToken(strLexemePrev, strLexemeCurrent, strLexemeNext)
+
+            'Process key words
+            '    Determine whether the next end statement will also be the end of the current script.
+            '    Normally, a '}' indicates the end of the current script. However, R allows single
+            '    statement scripts, not enclosed with '{}' for selected key words. 
+            '    The key words that allow this are: if, else, while, for and function.
+            '    For example:
+            '        if(x <= 0) y <- log(1+x) else y <- log(x)
+            If clsToken.enuToken = clsRToken.typToken.RComment OrElse       'ignore comments, spaces and newlines (they don't affect key word processing)
+                    clsToken.enuToken = clsRToken.typToken.RSpace Then
+                '    clsToken.enuToken = clsRToken.typToken.RNewLine Then
+                ' clsToken.enuToken = clsRToken.typToken.RKeyWord Then    'ignore keywords (already processed above)
+                'do nothing
+            Else
+                Select Case stkTokenState.Peek()
+                    Case typTokenState.WaitingForOpenCondition
+
+                        If Not clsToken.enuToken = clsRToken.typToken.RNewLine Then
+                            If Not clsToken.strTxt = "(" Then
+                                'TODO developer error
+                            End If
+
+                            stkTokenState.Pop()
+                            stkTokenState.Push(typTokenState.WaitingForCloseCondition)
+                        End If
+
+                    Case typTokenState.WaitingForCloseCondition
+
+                        If stkNumOpenBrackets.Peek() = 0 Then
+                            stkTokenState.Pop()
+                            stkTokenState.Push(typTokenState.WaitingForStartScript)
+                        End If
+
+                    Case typTokenState.WaitingForStartScript
+
+                        If Not clsToken.enuToken = clsRToken.typToken.RNewLine Then
+                            stkTokenState.Pop()
+                            stkTokenState.Push(typTokenState.WaitingForEndScript)
+                            If clsToken.strTxt = "{" Then
+                                stkIsScriptEnclosedByCurlyBrackets.Push(True)  'script will terminate with '}'
+                            Else
+                                stkIsScriptEnclosedByCurlyBrackets.Push(False) 'script will terminate with end statement
+                            End If
+                        End If
+
+                    Case typTokenState.WaitingForEndScript
+
+                        If clsToken.enuToken = clsRToken.typToken.RNewLine AndAlso
+                                stkNumOpenBrackets.Peek() = 0 AndAlso               'if there are no open brackets
+                                Not IsUserDefinedOperator(strLexemePrev) AndAlso    'if line doesn't end in a user-defined operator
+                                Not (arrROperators.Contains(strLexemePrev) AndAlso  'if line doesn't end in a predefined operator
+                                     Not strLexemePrev = "~") Then                  '    unless it's a tilda (the only operator that doesn't need a right-hand value)
+                            clsToken.enuToken = clsRToken.typToken.REndStatement
+                        End If
+
+                        If clsToken.enuToken = clsRToken.typToken.REndStatement AndAlso
+                                stkIsScriptEnclosedByCurlyBrackets.Peek() = False Then
+                            clsToken.enuToken = clsRToken.typToken.REndScript
+                        End If
+
+                        If clsToken.enuToken = clsRToken.typToken.REndScript Then
+                            stkIsScriptEnclosedByCurlyBrackets.Pop()
+                            stkNumOpenBrackets.Pop()
+                            stkTokenState.Pop()
+                        End If
+
+                    Case Else
+                        'TODO raise developer error
+                End Select
             End If
+
+            'add new token to token list
+            lstRTokens.Add(clsToken)
         Next intPos
 
         Return lstRTokens
@@ -205,7 +295,7 @@ Public Class clsRScript
                 arrRBrackets.Contains(strNew) OrElse         'bracket (e.g. '{')
                 IsSequenceOfSpaces(strNew) OrElse            'sequence of spaces
                 IsConstantString(strNew) OrElse              'string constant (starts with single or double)
-                Regex.IsMatch(strNew, "^%.*") OrElse         'user-defined operator (starts with '%*')
+                IsUserDefinedOperator(strNew) OrElse         'user-defined operator (starts with '%*')
                 IsComment(strNew) Then                       'comment (starts with '#*')
             Return True
         End If
@@ -230,15 +320,14 @@ Public Class clsRScript
     '''
     ''' <returns>   <paramref name="strLexemeCurrent"/> as a token. </returns>
     '''--------------------------------------------------------------------------------------------
-    Private Function GetRToken(strLexemePrev As String, strLexemeCurrent As String, strLexemeNext As String,
-                               bScriptComplete As Boolean, bStatementComplete As Boolean) As clsRToken
-
+    Private Function GetRToken(strLexemePrev As String, strLexemeCurrent As String, strLexemeNext As String) As clsRToken
+        'TODO refactor so that strLexemePrev and strLexemeNext are booleans rather than strings?
         If String.IsNullOrEmpty(strLexemeCurrent) Then
             Return Nothing
         End If
 
         Dim clsRTokenNew As New clsRToken With {
-            .strText = strLexemeCurrent
+            .strTxt = strLexemeCurrent
         }
 
         If arrKeyWords.Contains(strLexemeCurrent) Then               'reserved key word (e.g. if, else etc.)
@@ -250,13 +339,7 @@ Public Class clsRScript
         ElseIf IsConstantString(strLexemeCurrent) Then               'string literal (starts with single or double quote)
             clsRTokenNew.enuToken = clsRToken.typToken.RConstantString
         ElseIf arrRNewLines.Contains(strLexemeCurrent) Then          'new line (e.g. '\n')
-            If bScriptComplete Then
-                clsRTokenNew.enuToken = clsRToken.typToken.REndScript
-            ElseIf bStatementComplete Then
-                clsRTokenNew.enuToken = clsRToken.typToken.REndStatement
-            Else
-                clsRTokenNew.enuToken = clsRToken.typToken.RNewLine
-            End If
+            clsRTokenNew.enuToken = clsRToken.typToken.RNewLine
         ElseIf strLexemeCurrent = ";" Then                           'end statement
             clsRTokenNew.enuToken = clsRToken.typToken.REndStatement
         ElseIf strLexemeCurrent = "," Then                           'parameter separator
@@ -317,7 +400,7 @@ Public Class clsRScript
     '''
     ''' <param name="strTxt">   The text to check. </param>
     '''
-    ''' <returns>   True if <paramref name="strTxt"/> is a valid R syntactic name or key word, 
+    ''' <returns>   True if <paramref name="strTxt"/> is a complete or partial string constant,
     '''             else returns false.</returns>
     '''--------------------------------------------------------------------------------------------
     Private Function IsConstantString(strTxt As String) As Boolean
@@ -361,6 +444,15 @@ Public Class clsRScript
         Return False
     End Function
 
+    '''--------------------------------------------------------------------------------------------
+    ''' <summary>   Returns true if <paramref name="strTxt"/> is a functional R element 
+    '''             (i.e. not a space, comment or new line), else returns false. </summary>
+    '''
+    ''' <param name="strTxt">   The text to check . </param>
+    '''
+    ''' <returns>   True  if <paramref name="strTxt"/> is a functional R element
+    '''             (i.e. not a space, comment or new line), else returns false. </returns>
+    '''--------------------------------------------------------------------------------------------
     Private Function IsRElement(strTxt As String) As Boolean
         If Not arrRNewLines.Contains(strTxt) AndAlso
            Not IsSequenceOfSpaces(strTxt) AndAlso
@@ -369,4 +461,21 @@ Public Class clsRScript
         End If
         Return False
     End Function
+
+    '''--------------------------------------------------------------------------------------------
+    ''' <summary>   Returns true if <paramref name="strTxt"/> is a complete or partial  
+    '''             user-defined operator, else returns false.</summary>
+    '''
+    ''' <param name="strTxt">   The text to check. </param>
+    '''
+    ''' <returns>   True if <paramref name="strTxt"/> is a complete or partial  
+    '''             user-defined operator, else returns false.</returns>
+    '''--------------------------------------------------------------------------------------------
+    Private Function IsUserDefinedOperator(strTxt As String) As Boolean
+        If Not String.IsNullOrEmpty(strTxt) AndAlso Regex.IsMatch(strTxt, "^%.*") Then
+            Return True
+        End If
+        Return False
+    End Function
+
 End Class
