@@ -2,17 +2,20 @@
     Inherits clsRElementProperty
 
     Public lstRParameters As New List(Of clsRParameterNamed)
-    'Public lstRParams As New List(Of clsRParameterFunction) 'need to override parameter list of parent
 
-    'Private _lstRParams As New List(Of clsRParameterFunction)
+    '''--------------------------------------------------------------------------------------------
+    ''' <summary>   TODO. </summary>
+    '''
+    ''' <returns>   as debug string. </returns>
+    '''--------------------------------------------------------------------------------------------
+    Public Overloads Function GetAsDebugString() As String
+        Dim strTxt As String = "ElementFunction: " & vbLf
 
-    'Public Overrides Property LstRParams As List(Of clsRParameterFunction)
-    '    Get
-    '        Return _lstRParams
-    '    End Get
-    '    Set(value As List(Of clsRParameter))
-    '        _lstRParams = value
-    '    End Set
-    'End Property
+        For Each clsParameter As clsRParameterNamed In lstRParameters
+            strTxt &= clsParameter.GetAsDebugString()
+        Next
+
+        Return strTxt
+    End Function
 
 End Class

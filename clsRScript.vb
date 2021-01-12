@@ -1,5 +1,52 @@
 ﻿Imports System.Text.RegularExpressions
 
+'TODO There are five types of constants: integer, logical, numeric, complex and string
+'TODO Private ReadOnly arrSpecialConstants() As String = {"NULL", "NA", "Inf", "NaN"}
+'TODO handle '...' (used in function definition)
+'TODO insert invisible '{' and '}' for key words?
+'TODO is it possible for packages to be nested (e.g. 'p1::p1_1::f()')?
+'TODO handle function names as string constants. E.g 'x + y can equivalently be written "+"(x, y). Notice that since '+' is a non-standard function name, it needs to be quoted (see https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Writing-functions)'
+' 03/11/20 </para><para>
+' - The current class structure allows an operator to be assigned to (don't know if this is 
+' valid R) </para><para>
+' - Software shall not reject any valid R (i.e. false negatives are *not* allowed).
+' - However the software is not intended to check that text is valid R. 
+' If the software populates RElement objects from invalid R code without raising an error 
+' then that is acceptable (i.e. false positives are allowed). </para><para>
+' 
+' TODO: </para><para>
+' 
+' 03/11/20
+' - Process multiline input. Newline indicates end of statement when: </para><para>
+'     1. line ends in an operator (excluding spaces and comments)  
+'     2. odd number of '()' or '[]' are open ('{}' are a special case related to key words)   
+' - Store spaces, comments and formatting new lines (also tabs?)
+' - Create automatic unit tests  
+' - Remove clsRTreeElement and parse string directly into clsRElement structure 
+' - Process ';', indicates end of statement 
+' - Process key words. Some key words (e.g. if) have a statement that returns true/false,   
+' followed by  a statement to execute (may be bracketed in '{}'
+' - Use assigned statements to manage the state of the R environment (ask David for more details)  
+'</para><para>
+'
+' 17/11/20
+' - move clsAssignment to clsRStatement  
+' - function: if function parameter is single element then   
+'                 if function *definition* then element is name
+'                 else if function *call* then element is value
+' - add 'in' operator (distinguish from 'introvert')  
+' - add key words (if, else, repeat, while, function, for)  
+' - add '{'   
+' - if comment on own line then link it to the next statement, else link to prev element  
+' - support all assignments including '=' and assign to right operators  
+' - allow new operators (e.g. '%div%), make operator list dynamic  
+' - if a package is loaded that contains new operators then add the package's operators to the operator list  
+' - '@' operator (similar to '$', store at same level)  
+' - store state of R environment   
+'       e.g. don't treat variables as text but store object they represent (e.g. value or function deinition)
+'       RSyntax already does this
+' - allow named operator params (R-Insta allows operator params to be named, but this infor is lost in script)
+
 Public Class clsRScript
 
     Public lstRStatements As List(Of clsRStatement)
@@ -22,9 +69,6 @@ Public Class clsRScript
         WaitingForEndScript
     End Enum
 
-    'TODO There are five types of constants: integer, logical, numeric, complex and string
-    'TODO Private ReadOnly arrSpecialConstants() As String = {"NULL", "NA", "Inf", "NaN"}
-
     '''--------------------------------------------------------------------------------------------
     ''' <summary>   Constructor TODO. </summary>
     '''
@@ -37,6 +81,8 @@ Public Class clsRScript
 
         Dim lstLexemes As List(Of String) = GetLstLexemes(strInput)
         Dim lstTokens As List(Of clsRToken) = GetLstTokens(lstLexemes)
+        lstRStatements = GetLstRStatements(lstTokens)
+
     End Sub
 
     '''--------------------------------------------------------------------------------------------
@@ -264,6 +310,44 @@ Public Class clsRScript
     End Function
 
     '''--------------------------------------------------------------------------------------------
+    ''' <summary>   TODO. </summary>
+    '''
+    ''' <param name="lstRTokens">   The list r tokens. </param>
+    '''
+    ''' <returns>   The list r statements. </returns>
+    '''--------------------------------------------------------------------------------------------
+    Public Function GetLstRStatements(lstRTokens As List(Of clsRToken)) As List(Of clsRStatement)
+        If lstRTokens Is Nothing OrElse lstRTokens.Count = 0 Then
+            Return Nothing
+        End If
+
+        Dim lstRStatements = New List(Of clsRStatement)
+        Dim intPos As Integer = 0
+
+        While (intPos < lstRTokens.Count)
+            lstRStatements.Add(New clsRStatement(lstRTokens, intPos))
+        End While
+
+        Return lstRStatements
+    End Function
+
+    '''--------------------------------------------------------------------------------------------
+    ''' <summary>   TODO. </summary>
+    '''
+    ''' <returns>   as debug string. </returns>
+    '''--------------------------------------------------------------------------------------------
+    Public Function GetAsDebugString() As String
+
+        Dim strTxt As String = "Script: " & vbLf
+
+        For Each clsStatement As clsRStatement In lstRStatements
+            strTxt &= clsStatement.GetAsDebugString()
+        Next
+
+        Return strTxt
+    End Function
+
+    '''--------------------------------------------------------------------------------------------
     ''' <summary>   Returns true if <paramref name="strNew"/> is valid lexeme, else returns false.
     '''             </summary>
     '''
@@ -332,8 +416,13 @@ Public Class clsRScript
 
         If arrKeyWords.Contains(strLexemeCurrent) Then               'reserved key word (e.g. if, else etc.)
             clsRTokenNew.enuToken = clsRToken.typToken.RKeyWord
-        ElseIf IsSyntacticName(strLexemeCurrent) Then                'syntactic name 
-            clsRTokenNew.enuToken = clsRToken.typToken.RSyntacticName
+        ElseIf IsSyntacticName(strLexemeCurrent) Then
+            If String.IsNullOrEmpty(strLexemeNext) OrElse
+                    Not strLexemeNext = "(" Then
+                clsRTokenNew.enuToken = clsRToken.typToken.RSyntacticName 'syntactic name
+            Else
+                clsRTokenNew.enuToken = clsRToken.typToken.RFunctionName  'function name
+            End If
         ElseIf IsComment(strLexemeCurrent) Then                      'comment (starts with '#*')
             clsRTokenNew.enuToken = clsRToken.typToken.RComment
         ElseIf IsConstantString(strLexemeCurrent) Then               'string literal (starts with single or double quote)
