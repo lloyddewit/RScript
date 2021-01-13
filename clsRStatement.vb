@@ -124,10 +124,10 @@
 
     '''--------------------------------------------------------------------------------------------
     ''' <summary>
-    '''     TODO Traverses the tree of tokens in <paramref name="lstTokens"/>. If the token
-    '''     is a ',' then it makes everything up to the next ',' or ')' a child of the ',' token.
-    '''     Commas are used to separate function parameters. Parameters between commas are optional.
-    '''     For example: 'myFunction(a,,b)' is structured as: myFunction (
+    '''     TODO Traverses the tree of tokens in <paramref name="lstTokens"/>. If the token is a ','
+    '''     then it makes everything up to the next ',' or ')' a child of the ',' token. Commas are
+    '''     used to separate function parameters. Parameters between commas are optional. For
+    '''     example: 'myFunction(a,,b)' is structured as: myFunction (
     '''     ..a
     '''     ..,
     '''     ..,
@@ -135,9 +135,9 @@
     '''     ....)
     ''' </summary>
     '''
-    ''' <param name="lstTokenBrackets"> The list statement tokens. </param>
+    ''' <param name="lstTokens">    The list statement tokens. </param>
     '''
-    ''' <returns>   The list token brackets. </returns>
+    ''' <returns>   The list token brackets. </returns> 
     '''--------------------------------------------------------------------------------------------
     Private Function GetLstTokenFunctionBrackets(lstTokens As List(Of clsRToken)) As List(Of clsRToken)
         'if nothing to process then return empty list
@@ -154,7 +154,7 @@
 
             If clsToken.enuToken = clsRToken.typToken.RFunctionName Then
                 'if function name already has children, or next steps will go out of bounds, then throw developer error
-                If clsToken.lstTokens.Count >= 0 OrElse
+                If clsToken.lstTokens.Count > 0 OrElse
                         intPos >= lstTokens.Count - 1 OrElse
                         (lstTokens.Item(intPos + 1).enuToken = clsRToken.typToken.RSpace AndAlso
                         intPos >= lstTokens.Count - 2) Then
@@ -175,7 +175,7 @@
             lstTokensNew.Add(clsToken.CloneMe)
             intPos += 1
         End While
-        Return lstTokens
+        Return lstTokensNew
     End Function
 
     '''--------------------------------------------------------------------------------------------
