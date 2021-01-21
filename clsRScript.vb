@@ -331,15 +331,21 @@ Public Class clsRScript
         Return lstRStatements
     End Function
 
+    Public Function GetAsExecutableScript() As String
+        Dim strTxt As String = ""
+        For Each clsStatement As clsRStatement In lstRStatements
+            strTxt &= clsStatement.GetAsExecutableScript()
+        Next
+
+        Return strTxt
+    End Function
     '''--------------------------------------------------------------------------------------------
     ''' <summary>   TODO. </summary>
     '''
     ''' <returns>   as debug string. </returns>
     '''--------------------------------------------------------------------------------------------
     Public Function GetAsDebugString() As String
-
         Dim strTxt As String = "Script: " & vbLf
-
         For Each clsStatement As clsRStatement In lstRStatements
             strTxt &= clsStatement.GetAsDebugString()
         Next
@@ -417,11 +423,10 @@ Public Class clsRScript
         If arrKeyWords.Contains(strLexemeCurrent) Then               'reserved key word (e.g. if, else etc.)
             clsRTokenNew.enuToken = clsRToken.typToken.RKeyWord
         ElseIf IsSyntacticName(strLexemeCurrent) Then
-            If String.IsNullOrEmpty(strLexemeNext) OrElse
-                    Not strLexemeNext = "(" Then
-                clsRTokenNew.enuToken = clsRToken.typToken.RSyntacticName 'syntactic name
-            Else
+            If strLexemeNext = "(" Then
                 clsRTokenNew.enuToken = clsRToken.typToken.RFunctionName  'function name
+            Else
+                clsRTokenNew.enuToken = clsRToken.typToken.RSyntacticName 'syntactic name
             End If
         ElseIf IsComment(strLexemeCurrent) Then                      'comment (starts with '#*')
             clsRTokenNew.enuToken = clsRToken.typToken.RComment
@@ -527,7 +532,9 @@ Public Class clsRScript
     '''             characters), else returns false. </returns>
     '''--------------------------------------------------------------------------------------------
     Private Function IsSequenceOfSpaces(strTxt As String) As Boolean
-        If Not String.IsNullOrEmpty(strTxt) AndAlso Regex.IsMatch(strTxt, "^ *$") Then
+        If Not String.IsNullOrEmpty(strTxt) AndAlso
+                Not strTxt = vbLf AndAlso
+                Regex.IsMatch(strTxt, "^ *$") Then
             Return True
         End If
         Return False

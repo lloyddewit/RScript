@@ -3,6 +3,12 @@
 
     Public lstRParameters As New List(Of clsRParameterNamed)
 
+    Public Sub New(clsToken As clsRToken, Optional bBracketedNew As Boolean = False, Optional clsPresentationNew As clsRElementPresentation = Nothing)
+        MyBase.New(clsToken, bBracketedNew, clsPresentationNew)
+    End Sub
+
+
+
     '''--------------------------------------------------------------------------------------------
     ''' <summary>   TODO. </summary>
     '''

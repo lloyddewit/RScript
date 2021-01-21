@@ -1,8 +1,12 @@
 ﻿Public Class clsRElementOperator
     Inherits clsRElement
-    Public clsRParameter As Boolean = False
-    Public strTerminator 'only used for '[' and '[[' operators
+    Public bFirstParamOnRight As Boolean = False
+    Public strTerminator As String = "" 'only used for '[' and '[[' operators
     Public lstRParameters As New List(Of clsRParameter)
+
+    Public Sub New(clsToken As clsRToken, Optional bBracketedNew As Boolean = False, Optional clsPresentationNew As clsRElementPresentation = Nothing)
+        MyBase.New(clsToken, bBracketedNew, clsPresentationNew)
+    End Sub
 
     '''--------------------------------------------------------------------------------------------
     ''' <summary>   TODO. </summary>
@@ -11,8 +15,9 @@
     '''--------------------------------------------------------------------------------------------
     Public Overloads Function GetAsDebugString() As String
         Dim strTxt As String = "ElementOperator: " & vbLf &
-                "clsRParameter: " & clsRParameter & vbLf &
-                "strTerminator: " & strTerminator & vbLf
+                "bFirstParamOnRight: " & bFirstParamOnRight & vbLf &
+                "strTerminator: " & strTerminator & vbLf &
+                "lstRParameters" & vbLf
 
         For Each clsParameter As clsRParameter In lstRParameters
             strTxt &= clsParameter.GetAsDebugString()
