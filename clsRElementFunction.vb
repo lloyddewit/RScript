@@ -1,10 +1,12 @@
 ﻿Public Class clsRElementFunction
     Inherits clsRElementProperty
 
-    Public lstRParameters As New List(Of clsRParameterNamed)
+    Public lstParameters As New List(Of clsRParameterNamed)
 
-    Public Sub New(clsToken As clsRToken, Optional bBracketedNew As Boolean = False, Optional clsPresentationNew As clsRElementPresentation = Nothing)
-        MyBase.New(clsToken, bBracketedNew, clsPresentationNew)
+    Public Sub New(clsToken As clsRToken, Optional bBracketedNew As Boolean = False,
+                   Optional lstObjectsNew As List(Of clsRElement) = Nothing,
+                   Optional clsPresentationNew As clsRElementPresentation = Nothing)
+        MyBase.New(clsToken, bBracketedNew, lstObjectsNew, clsPresentationNew)
     End Sub
 
 
@@ -17,7 +19,7 @@
     Public Overloads Function GetAsDebugString() As String
         Dim strTxt As String = "ElementFunction: " & vbLf
 
-        For Each clsParameter As clsRParameterNamed In lstRParameters
+        For Each clsParameter As clsRParameterNamed In lstParameters
             strTxt &= clsParameter.GetAsDebugString()
         Next
 

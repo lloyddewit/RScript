@@ -23,15 +23,18 @@
   </Class>
   <Class Name="RScript.clsRElementProperty">
     <Position X="4.5" Y="3.25" Width="1.5" />
+    <Compartments>
+      <Compartment Name="Fields" Collapsed="true" />
+    </Compartments>
     <TypeIdentifier>
-      <HashCode>gAgAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAA=</HashCode>
+      <HashCode>gAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
       <FileName>clsRElementProperty.vb</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="RScript.clsRElementFunction">
     <Position X="4.5" Y="5.5" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>BAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <HashCode>AAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
       <FileName>clsRElementFunction.vb</FileName>
     </TypeIdentifier>
   </Class>
@@ -77,10 +80,10 @@
       <FileName>clsRToken.vb</FileName>
     </TypeIdentifier>
   </Class>
-  <Class Name="RScript.clsRStatement">
+  <Class Name="RScript.clsRStatement" Collapsed="true">
     <Position X="2.25" Y="0.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>AAgRBAAhEAQIQAAAAABAAoAwAAAACAKEACAEAAACACA=</HashCode>
+      <HashCode>AAgRBAIhEAQMQAAAAABAAoAwAAAACAKEACAEAAACACA=</HashCode>
       <FileName>clsRStatement.vb</FileName>
     </TypeIdentifier>
   </Class>

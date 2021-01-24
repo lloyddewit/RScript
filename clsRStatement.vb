@@ -93,7 +93,7 @@
                 'else if the statement has a right assignment (e.g. 'value->x' or 'value->>x')
                 strAssignmentOperator = lstTokenTree.Item(0).strTxt
                 clsAssignment = GetRElement(lstTokenTree.Item(0).lstTokens.Item(1))
-                clsElement = GetRElement(lstTokenTree.Item(0).lstTokens.Item(1))
+                clsElement = GetRElement(lstTokenTree.Item(0).lstTokens.Item(0))
             End If
         End If
 
@@ -149,57 +149,54 @@
 
         Select Case clsElement.GetType()
             Case GetType(clsRElementFunction)
-                'Public lstRParameters As New List(Of clsRParameterNamed)
+                'Public lstParameters As New List(Of clsRParameterNamed)
 
-                strScript &= If(String.IsNullOrEmpty(clsElement.strPackageName), "", clsElement.strPackageName + "::")
-                If Not IsNothing(clsElement.lstRObjects) AndAlso clsElement.lstRObjects.Count > 0 Then
-                    For Each clsRObject In clsElement.lstRObjects
-                        strScript &= GetScriptElement(clsRObject)
-                        strScript &= "$"
-                    Next
-                End If
-                strScript &= clsElement.strTxt
-                If Not IsNothing(clsElement.lstRParameters) Then
-                    strScript &= "("
+                strScript &= GetScriptElementProperty(clsElement)
+                strScript &= "("
+                If Not IsNothing(clsElement.lstParameters) Then
                     Dim bPrefixComma As Boolean = False
-                    For Each clsRParameter In clsElement.lstRParameters
+                    For Each clsRParameter In clsElement.lstParameters
                         strScript &= If(bPrefixComma, ",", "")
                         bPrefixComma = True
-                        strScript &= If(IsNothing(clsRParameter.strArgumentName), "", clsRParameter.strArgumentName + "=")
+                        strScript &= If(String.IsNullOrEmpty(clsRParameter.strArgumentName), "", clsRParameter.strArgumentName + "=")
                         strScript &= GetScriptElement(clsRParameter.clsArgValue)
                     Next
-                    strScript &= ")"
                 End If
+                strScript &= ")"
             Case GetType(clsRElementProperty)
                 'Public strPackageName As String = "" 'only used for functions and variables (e.g. 'constants::syms$h')
-                'Public lstRObjects As New List(Of clsRElement) 'only used for functions and variables (e.g. 'constants::syms$h')
+                'Public lstObjects As New List(Of clsRElement) 'only used for functions and variables (e.g. 'constants::syms$h')
 
-                strScript &= If(IsNothing(clsElement.strPackageName), "", clsElement.strPackageName + "::")
-                If Not IsNothing(clsElement.lstRObjects) AndAlso clsElement.lstRObjects.Count > 0 Then
-                    For Each clsRObject In clsElement.lstRObjects
-                        strScript &= GetScriptElement(clsRObject)
-                        strScript &= "$"
-                    Next
-                End If
-                strScript &= clsElement.strTxt
+                strScript &= GetScriptElementProperty(clsElement)
             Case GetType(clsRElementOperator)
                 'Public bFirstParamOnRight As Boolean = False
                 'Public strTerminator As String = "" 'only used for '[' and '[[' operators
                 'Public lstRParameters As New List(Of clsRParameter)
 
                 Dim bPrefixOperator As Boolean = If(clsElement.bFirstParamOnRight, True, False)
-                For Each clsRParameter In clsElement.lstRParameters
+                For Each clsRParameter In clsElement.lstParameters
                     strScript &= If(bPrefixOperator, clsElement.strTxt, "")
                     bPrefixOperator = True
                     strScript &= GetScriptElement(clsRParameter.clsArgValue)
                 Next
-                strScript &= If(clsElement.lstRParameters.Count = 1 AndAlso Not clsElement.bFirstParamOnRight, clsElement.strTxt, "")
-                strScript &= clsElement.strTerminator
+                strScript &= If(clsElement.lstParameters.Count = 1 AndAlso Not clsElement.bFirstParamOnRight, clsElement.strTxt, "")
             Case GetType(clsRElementKeyWord)
             Case GetType(clsRElement)
                 strScript &= clsElement.strTxt
         End Select
         strScript &= If(clsElement.bBracketed, ")", "")
+        Return strScript
+    End Function
+
+    Private Function GetScriptElementProperty(clsElement As clsRElementProperty) As String
+        Dim strScript As String = If(String.IsNullOrEmpty(clsElement.strPackageName), "", clsElement.strPackageName + "::")
+        If Not IsNothing(clsElement.lstObjects) AndAlso clsElement.lstObjects.Count > 0 Then
+            For Each clsObject In clsElement.lstObjects
+                strScript &= GetScriptElement(clsObject)
+                strScript &= "$"
+            Next
+        End If
+        strScript &= clsElement.strTxt
         Return strScript
     End Function
 
@@ -463,6 +460,21 @@
                                 bPrevTokenProcessed = True
                                 clsToken.lstTokens.Add(GetNextToken(lstTokens, intPosTokens, intPosOperators))
                                 intPosTokens += 1
+                                'while next token is the same operator (e.g. 'a+b+c+d...'), 
+                                '    then keep making the next token, the child of the current operator token
+                                Dim clsTokenNext As clsRToken
+                                While intPosTokens < lstTokens.Count - 1
+                                    clsTokenNext = GetNextToken(lstTokens, intPosTokens, intPosOperators)
+                                    If IsNothing(clsTokenNext) OrElse
+                                        Not clsToken.enuToken = clsTokenNext.enuToken OrElse
+                                        Not clsToken.strTxt = clsTokenNext.strTxt Then
+                                        Exit While
+                                    End If
+
+                                    intPosTokens += 1
+                                    clsToken.lstTokens.Add(GetNextToken(lstTokens, intPosTokens, intPosOperators))
+                                    intPosTokens += 1
+                                End While
                             Case clsRToken.typToken.ROperatorUnaryRight
                                 'make the next token, the child of the current operator token
                                 clsToken.lstTokens.Add(GetNextToken(lstTokens, intPosTokens, intPosOperators))
@@ -526,11 +538,11 @@
 
         'process the next token's children
         Dim clsTokenNext As clsRToken = lstTokens.Item(intPosTokens + 1).CloneMe
-        clsTokenNext.lstTokens = GetLstTokenOperatorGroup(clsTokenNext.CloneMe.lstTokens, intPosOperators)
+        clsTokenNext.lstTokens = GetLstTokenOperatorGroup(clsTokenNext.CloneMe.lstTokens, intPosOperators) 'TODO is this needed?
         Return clsTokenNext
     End Function
 
-    Private Function GetRElement(clsToken As clsRToken, Optional bBracketedNew As Boolean = False) As clsRElement
+    Private Function GetRElement(clsToken As clsRToken, Optional bBracketedNew As Boolean = False, Optional lstObjects As List(Of clsRElement) = Nothing) As clsRElement
         If IsNothing(clsToken) Then
             Return Nothing
         End If
@@ -545,7 +557,7 @@
                 Return New clsRElement(clsToken)
 
             Case clsRToken.typToken.RFunctionName
-                Dim clsFunction As New clsRElementFunction(clsToken, bBracketedNew)
+                Dim clsFunction As New clsRElementFunction(clsToken, bBracketedNew, lstObjects)
                 'if function has at least one parameter
                 'Note: Function tokens are structured as a tree.
                 '      For example 'f(a,b,c=d)' is structured as:
@@ -567,9 +579,9 @@
                         Dim clsParameter As clsRParameterNamed = GetRParameterNamed(clsTokenParam)
                         If Not IsNothing(clsParameter) Then
                             If bFirstParam AndAlso IsNothing(clsParameter.clsArgValue) Then
-                                clsFunction.lstRParameters.Add(clsParameter) 'add extra empty parameter for case 'f(,)'
+                                clsFunction.lstParameters.Add(clsParameter) 'add extra empty parameter for case 'f(,)'
                             End If
-                            clsFunction.lstRParameters.Add(clsParameter)
+                            clsFunction.lstParameters.Add(clsParameter)
                         End If
                         bFirstParam = False
                     Next
@@ -584,7 +596,7 @@
                 'For Each clsTreeParam As clsRTreeElement In clsToken.lstTreeElements
                 '    Dim clsRParameter As New clsRParameter
                 '    clsRParameter.clsArgValue = GetRElement(clsTreeParam.lstTreeElements.Item(0))
-                '    clsROperator.lstRParameters.Add(clsRParameter)
+                '    clsROperator.lstParameters.Add(clsRParameter)
                 'Next
                 'Return clsROperator
 
@@ -595,22 +607,36 @@
                 'For Each clsTreeParam As clsRTreeElement In clsToken.lstTokens
                 '    Dim clsRParameter As New clsRParameter
                 '    clsRParameter.clsArgValue = GetRElement(clsTreeParam.lstTreeElements.Item(0))
-                '    clsROperator.lstRParameters.Add(clsRParameter)
+                '    clsROperator.lstParameters.Add(clsRParameter)
                 'Next
                 'clsROperator.bFirstParamOnRight = True
                 'Return clsROperator
 
             Case clsRToken.typToken.ROperatorBinary
-                'Dim clsROperator As New clsRElementOperator
-                'clsROperator.strTxt = clsToken.strTxt
-                'clsROperator.bBracketed = bBracketedNew
-                'clsROperator.clsAssignment = GetRElement(clsToken.clsAssign)
-                'For Each clsTreeParam As clsRTreeElement In clsToken.lstTreeElements
-                '    Dim clsRParameter As New clsRParameter
-                '    clsRParameter.clsArgValue = GetRElement(clsTreeParam.lstTreeElements.Item(0))
-                '    clsROperator.lstRParameters.Add(clsRParameter)
-                'Next
-                'Return clsROperator
+                If clsToken.lstTokens.Count < 2 Then
+                    'TODO developer error: binary operator must have at least 2 parameters
+                    Return Nothing
+                End If
+
+                'if object operator
+                If clsToken.strTxt = "$" Then
+                    Dim lstObjectsNew As New List(Of clsRElement)
+
+                    'add each object parameter to the object list (except last parameter)
+                    For intPos As Integer = 0 To clsToken.lstTokens.Count - 2
+                        lstObjectsNew.Add(GetRElement(clsToken.lstTokens.Item(intPos)))
+                    Next
+
+                    'the last item in the parameter list is the element we need to return
+                    Return GetRElement(clsToken.lstTokens.Item(clsToken.lstTokens.Count - 1), bBracketedNew, lstObjectsNew)
+                End If
+
+                'else if not an object or package operator, then add each parameter to the operator
+                Dim clsOperator As New clsRElementOperator(clsToken, bBracketedNew)
+                For intPos As Integer = 0 To clsToken.lstTokens.Count - 1
+                    clsOperator.lstParameters.Add(GetRParameter(clsToken.lstTokens.Item(intPos)))
+                Next
+                Return clsOperator
 
             Case clsRToken.typToken.ROperatorBracket
                 'Dim clsROperator As New clsRElementOperator
@@ -620,7 +646,7 @@
                 'For Each clsTreeParam As clsRTreeElement In clsToken.lstTreeElements
                 '    Dim clsRParameter As New clsRParameter
                 '    clsRParameter.clsArgValue = GetRElement(clsTreeParam.lstTreeElements.Item(0))
-                '    clsROperator.lstRParameters.Add(clsRParameter)
+                '    clsROperator.lstParameters.Add(clsRParameter)
                 'Next
                 'Select Case clsROperator.strTxt
                 '    Case "["
@@ -630,7 +656,11 @@
                 'End Select
                 'Return clsROperator
             Case clsRToken.typToken.RSyntacticName, clsRToken.typToken.RConstantString
-                Return New clsRElement(clsToken, bBracketedNew)
+                If IsNothing(lstObjects) Then
+                    Return New clsRElement(clsToken, bBracketedNew)
+                Else
+                    Return New clsRElementProperty(clsToken, bBracketedNew, lstObjects)
+                End If
             Case Else
                 'TODO raise developer error: unknown token type
                 Exit Select
@@ -679,6 +709,14 @@
                 }
                 Return clsParameterNamed
         End Select
+    End Function
+
+    Private Function GetRParameter(clsToken As clsRToken) As clsRParameter
+        If IsNothing(clsToken) Then
+            'TODO developer error: operator parameter is empty
+            Return Nothing
+        End If
+        Return New clsRParameter With {.clsArgValue = GetRElement(clsToken)}
     End Function
 
     Private Function GetLstTokensAsString(lstTokens As List(Of clsRToken), Optional strIndent As String = "") As String
