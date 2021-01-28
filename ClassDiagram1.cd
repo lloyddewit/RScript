@@ -23,18 +23,15 @@
   </Class>
   <Class Name="RScript.clsRElementProperty">
     <Position X="4.5" Y="3.25" Width="1.5" />
-    <Compartments>
-      <Compartment Name="Fields" Collapsed="true" />
-    </Compartments>
     <TypeIdentifier>
-      <HashCode>gAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <HashCode>gAgAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
       <FileName>clsRElementProperty.vb</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="RScript.clsRElementFunction">
     <Position X="4.5" Y="5.5" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>AAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <HashCode>AAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQ=</HashCode>
       <FileName>clsRElementFunction.vb</FileName>
     </TypeIdentifier>
   </Class>
@@ -48,7 +45,7 @@
   <Class Name="RScript.clsRElementOperator">
     <Position X="6.25" Y="3.25" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>BAoAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <HashCode>AAoAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAQ=</HashCode>
       <FileName>clsRElementOperator.vb</FileName>
     </TypeIdentifier>
   </Class>

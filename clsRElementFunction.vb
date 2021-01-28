@@ -4,9 +4,10 @@
     Public lstParameters As New List(Of clsRParameterNamed)
 
     Public Sub New(clsToken As clsRToken, Optional bBracketedNew As Boolean = False,
+                   Optional strPackageNameNew As String = "",
                    Optional lstObjectsNew As List(Of clsRElement) = Nothing,
                    Optional clsPresentationNew As clsRElementPresentation = Nothing)
-        MyBase.New(clsToken, bBracketedNew, lstObjectsNew, clsPresentationNew)
+        MyBase.New(clsToken, bBracketedNew, strPackageNameNew, lstObjectsNew, clsPresentationNew)
     End Sub
 
 

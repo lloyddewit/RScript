@@ -37,6 +37,10 @@ Public Class clsRToken
         clsToken.enuToken = enuToken
 
         For Each clsTokenChild As clsRToken In lstTokens
+            If IsNothing(clsTokenChild) Then
+                'TODO developer error: token child has value nothing
+                Return Nothing
+            End If
             clsToken.lstTokens.Add(clsTokenChild.CloneMe)
         Next
 

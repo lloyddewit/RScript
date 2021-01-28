@@ -454,7 +454,7 @@ Public Class clsRScript
             clsRTokenNew.enuToken = clsRToken.typToken.ROperatorUnaryRight
         ElseIf strLexemeCurrent = "~" AndAlso                        'unary left operator (e.g. x~)
                 (String.IsNullOrEmpty(strLexemeNext) OrElse
-                Not Regex.IsMatch(strLexemeNext, "^[a-zA-Z0-9_\.(]")) Then
+                Not Regex.IsMatch(strLexemeNext, "^[a-zA-Z0-9_\.(\+\-\!~]")) Then
             clsRTokenNew.enuToken = clsRToken.typToken.ROperatorUnaryLeft
         ElseIf arrROperators.Contains(strLexemeCurrent) OrElse       'binary operator (e.g. '+')
                 Regex.IsMatch(strLexemeCurrent, "^%.*%$") Then

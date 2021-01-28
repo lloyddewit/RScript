@@ -76,7 +76,7 @@
         strDebug = GetLstTokensAsString(lstTokenTree) 'TODO just for debug, remove
 
         'if the tree does not include at least one token, then raise development error
-        If lstTokens.Count <= 0 Then
+        If lstTokenTree.Count < 1 Then
             Exit Sub 'TODO development error: token tree must contain at least one token
         End If
 
@@ -173,7 +173,7 @@
                 'Public strTerminator As String = "" 'only used for '[' and '[[' operators
                 'Public lstRParameters As New List(Of clsRParameter)
 
-                Dim bPrefixOperator As Boolean = If(clsElement.bFirstParamOnRight, True, False)
+                Dim bPrefixOperator As Boolean = clsElement.bFirstParamOnRight
                 For Each clsRParameter In clsElement.lstParameters
                     strScript &= If(bPrefixOperator, clsElement.strTxt, "")
                     bPrefixOperator = True
@@ -415,6 +415,10 @@
     '''     +
     '''     ..a
     '''     ..b
+    '''     Note: this function cannot process the edge case where a binary operator is 
+    '''     immediately followed by a unary operator with the same or a lower precedence 
+    '''     (e.g. 'a^-b', 'a+~b', 'a~~b' etc.). This is because of the R default precedence rules. 
+    '''     The workaround is to enclose the unary operator in brackets (e.g. 'a^(-b)', 'a+(~b)', 'a~(~b)' etc.).
     '''     
     ''' </summary>
     '''
@@ -442,56 +446,67 @@
             Select Case intPosOperators
                 Case intOperatorsBrackets    'handles '[' and '[['
                     'TODO
-                Case intOperatorsUnaryOnly   'handles '+' and '-' when they are unary operators (e.g. 'a * -b)
+                'Case intOperatorsUnaryOnly   'handles '+' and '-' when they are unary operators (e.g. 'a * -b)
                     'TODO
                 Case intOperatorsUserDefined 'handles all operators that start with '%'
                     'TODO
-                Case Else 'handles all other operators including 'intOperatorsTilda'
-                    'if token is the operator we're looking for
-                    If arrOperatorPrecedence(intPosOperators).Contains(clsToken.strTxt) Then
-                        Select Case clsToken.enuToken
-                            Case clsRToken.typToken.ROperatorBinary
-                                If IsNothing(clsTokenPrev) Then
-                                    'TODO throw developer error: binary operator missing previous parameter
-                                    Exit Select
-                                End If
-                                'make the previous and next tokens, the children of the current token
-                                clsToken.lstTokens.Add(clsTokenPrev.CloneMe)
-                                bPrevTokenProcessed = True
-                                clsToken.lstTokens.Add(GetNextToken(lstTokens, intPosTokens, intPosOperators))
-                                intPosTokens += 1
-                                'while next token is the same operator (e.g. 'a+b+c+d...'), 
-                                '    then keep making the next token, the child of the current operator token
-                                Dim clsTokenNext As clsRToken
-                                While intPosTokens < lstTokens.Count - 1
-                                    clsTokenNext = GetNextToken(lstTokens, intPosTokens, intPosOperators)
-                                    If IsNothing(clsTokenNext) OrElse
+                Case Else 'handles all other operators including 'intOperatorsUnaryOnly' and 'intOperatorsTilda'
+                    'if token is not the operator we're looking for, then exit select
+                    If Not arrOperatorPrecedence(intPosOperators).Contains(clsToken.strTxt) Then
+                        Exit Select
+                    End If
+                    Select Case clsToken.enuToken
+                        Case clsRToken.typToken.ROperatorBinary
+                            If IsNothing(clsTokenPrev) Then
+                                'TODO throw developer error: binary operator missing previous parameter
+                                Exit Select
+                            End If
+                            'edge case: if we are looking for unary '+' or '-' and we found a binary '+' or '-'
+                            If intPosOperators = intOperatorsUnaryOnly Then
+                                'do not process (binary '+' and '-' have a lower precedence and will be processed later)
+                                Exit Select
+                            End If
+                            'make the previous and next tokens, the children of the current token
+                            clsToken.lstTokens.Add(clsTokenPrev.CloneMe)
+                            bPrevTokenProcessed = True
+                            clsToken.lstTokens.Add(GetNextToken(lstTokens, intPosTokens, intPosOperators))
+                            intPosTokens += 1
+                            'while next token is the same operator (e.g. 'a+b+c+d...'), 
+                            '    then keep making the next token, the child of the current operator token
+                            Dim clsTokenNext As clsRToken
+                            While intPosTokens < lstTokens.Count - 1
+                                clsTokenNext = GetNextToken(lstTokens, intPosTokens, intPosOperators)
+                                If IsNothing(clsTokenNext) OrElse
                                         Not clsToken.enuToken = clsTokenNext.enuToken OrElse
                                         Not clsToken.strTxt = clsTokenNext.strTxt Then
-                                        Exit While
-                                    End If
+                                    Exit While
+                                End If
 
-                                    intPosTokens += 1
-                                    clsToken.lstTokens.Add(GetNextToken(lstTokens, intPosTokens, intPosOperators))
-                                    intPosTokens += 1
-                                End While
-                            Case clsRToken.typToken.ROperatorUnaryRight
-                                'make the next token, the child of the current operator token
+                                intPosTokens += 1
                                 clsToken.lstTokens.Add(GetNextToken(lstTokens, intPosTokens, intPosOperators))
                                 intPosTokens += 1
-                            Case clsRToken.typToken.ROperatorUnaryLeft
-                                If IsNothing(clsTokenPrev) OrElse Not intPosOperators = intOperatorsTilda Then
-                                    'TODO throw developer error: illegal unary left operator ('~' is the only valid unary left operator)
-                                    Exit Select
-                                End If
-                                'make the previous token, the child of the current operator token
-                                clsToken.lstTokens.Add(clsTokenPrev.CloneMe)
-                                bPrevTokenProcessed = True
-                            Case Else
-                                'TODO throw developer error: expecting an operator
+                            End While
+                        Case clsRToken.typToken.ROperatorUnaryRight
+                            'edge case: if we found a unary '+' or '-', but we are not currently processing the unary '+'and '-' operators
+                            If arrOperatorPrecedence(intOperatorsUnaryOnly).Contains(clsToken.strTxt) AndAlso
+                                Not intPosOperators = intOperatorsUnaryOnly Then
                                 Exit Select
-                        End Select
-                    End If
+                            End If
+                            'make the next token, the child of the current operator token
+                            clsToken.lstTokens.Add(GetNextToken(lstTokens, intPosTokens, intPosOperators))
+                            intPosTokens += 1
+                        Case clsRToken.typToken.ROperatorUnaryLeft
+                            If IsNothing(clsTokenPrev) OrElse Not intPosOperators = intOperatorsTilda Then
+                                'TODO throw developer error: illegal unary left operator ('~' is the only valid unary left operator)
+                                Exit Select
+                            End If
+                            'make the previous token, the child of the current operator token
+                            clsToken.lstTokens.Add(clsTokenPrev.CloneMe)
+                            bPrevTokenProcessed = True
+                        Case Else
+                            'TODO throw developer error: expecting an operator
+                            Exit Select
+                    End Select
             End Select
 
             'if token was not the operator we were looking for
@@ -500,9 +515,10 @@
                 If Not IsNothing(clsTokenPrev) Then
                     lstTokensNew.Add(clsTokenPrev)
                 End If
-                'process the current token's children
-                clsToken.lstTokens = GetLstTokenOperatorGroup(clsToken.CloneMe.lstTokens, intPosOperators)
             End If
+
+            'process the current token's children
+            clsToken.lstTokens = GetLstTokenOperatorGroup(clsToken.CloneMe.lstTokens, intPosOperators)
 
             clsTokenPrev = clsToken.CloneMe
             bPrevTokenProcessed = False
@@ -538,11 +554,11 @@
 
         'process the next token's children
         Dim clsTokenNext As clsRToken = lstTokens.Item(intPosTokens + 1).CloneMe
-        clsTokenNext.lstTokens = GetLstTokenOperatorGroup(clsTokenNext.CloneMe.lstTokens, intPosOperators) 'TODO is this needed?
+        'clsTokenNext.lstTokens = GetLstTokenOperatorGroup(clsTokenNext.CloneMe.lstTokens, intPosOperators) 'TODO is this needed?
         Return clsTokenNext
     End Function
 
-    Private Function GetRElement(clsToken As clsRToken, Optional bBracketedNew As Boolean = False, Optional lstObjects As List(Of clsRElement) = Nothing) As clsRElement
+    Private Function GetRElement(clsToken As clsRToken, Optional bBracketedNew As Boolean = False, Optional strPackageName As String = "", Optional lstObjects As List(Of clsRElement) = Nothing) As clsRElement
         If IsNothing(clsToken) Then
             Return Nothing
         End If
@@ -557,7 +573,7 @@
                 Return New clsRElement(clsToken)
 
             Case clsRToken.typToken.RFunctionName
-                Dim clsFunction As New clsRElementFunction(clsToken, bBracketedNew, lstObjects)
+                Dim clsFunction As New clsRElementFunction(clsToken, bBracketedNew, strPackageName, lstObjects)
                 'if function has at least one parameter
                 'Note: Function tokens are structured as a tree.
                 '      For example 'f(a,b,c=d)' is structured as:
@@ -589,28 +605,22 @@
                 Return clsFunction
 
             Case clsRToken.typToken.ROperatorUnaryLeft
-                'Dim clsROperator As New clsRElementOperator
-                'clsROperator.strTxt = clsToken.strText
-                'clsROperator.bBracketed = bBracketedNew
-                'clsROperator.clsAssignment = GetRElement(clsToken.clsAssign)
-                'For Each clsTreeParam As clsRTreeElement In clsToken.lstTreeElements
-                '    Dim clsRParameter As New clsRParameter
-                '    clsRParameter.clsArgValue = GetRElement(clsTreeParam.lstTreeElements.Item(0))
-                '    clsROperator.lstParameters.Add(clsRParameter)
-                'Next
-                'Return clsROperator
+                Dim clsOperator As New clsRElementOperator(clsToken, bBracketedNew)
+                If clsToken.lstTokens.Count < 1 Then
+                    'TODO developer error: unary left operator must have at least one parameter
+                    Return Nothing
+                End If
+                clsOperator.lstParameters.Add(GetRParameter(clsToken.lstTokens.Item(0)))
+                Return clsOperator
 
             Case clsRToken.typToken.ROperatorUnaryRight
-                'Dim clsROperator As New clsRElementOperator
-                'clsROperator.strTxt = clsToken.strTxt
-                'clsROperator.bBracketed = bBracketedNew
-                'For Each clsTreeParam As clsRTreeElement In clsToken.lstTokens
-                '    Dim clsRParameter As New clsRParameter
-                '    clsRParameter.clsArgValue = GetRElement(clsTreeParam.lstTreeElements.Item(0))
-                '    clsROperator.lstParameters.Add(clsRParameter)
-                'Next
-                'clsROperator.bFirstParamOnRight = True
-                'Return clsROperator
+                Dim clsOperator As New clsRElementOperator(clsToken, bBracketedNew, True)
+                If clsToken.lstTokens.Count < 1 Then
+                    'TODO developer error: unary right operator must have at least one parameter
+                    Return Nothing
+                End If
+                clsOperator.lstParameters.Add(GetRParameter(clsToken.lstTokens.Item(0)))
+                Return clsOperator
 
             Case clsRToken.typToken.ROperatorBinary
                 If clsToken.lstTokens.Count < 2 Then
@@ -619,24 +629,40 @@
                 End If
 
                 'if object operator
-                If clsToken.strTxt = "$" Then
-                    Dim lstObjectsNew As New List(Of clsRElement)
+                Select Case clsToken.strTxt
+                    Case "$"
+                        Dim strPackageNameNew As String = ""
+                        Dim lstObjectsNew As New List(Of clsRElement)
 
-                    'add each object parameter to the object list (except last parameter)
-                    For intPos As Integer = 0 To clsToken.lstTokens.Count - 2
-                        lstObjectsNew.Add(GetRElement(clsToken.lstTokens.Item(intPos)))
-                    Next
+                        'add each object parameter to the object list (except last parameter)
+                        For intPos As Integer = 0 To clsToken.lstTokens.Count - 2
+                            'if the first parameter is a package operator ('::'), then make this the package name for the returned element
+                            If intPos = 0 AndAlso
+                                    clsToken.lstTokens.Item(intPos).enuToken = clsRToken.typToken.ROperatorBinary AndAlso
+                                    clsToken.lstTokens.Item(intPos).strTxt = "::" Then
+                                If clsToken.lstTokens.Item(intPos).lstTokens.Count < 2 Then
+                                    'TODO developer error: package operator ('::') should have at least 2 parameters
+                                    Return Nothing
+                                End If
+                                strPackageNameNew = clsToken.lstTokens.Item(intPos).lstTokens.Item(0).strTxt
+                                lstObjectsNew.Add(GetRElement(clsToken.lstTokens.Item(intPos).lstTokens.Item(1)))
+                                Continue For
+                            End If
+                            lstObjectsNew.Add(GetRElement(clsToken.lstTokens.Item(intPos)))
+                        Next
 
-                    'the last item in the parameter list is the element we need to return
-                    Return GetRElement(clsToken.lstTokens.Item(clsToken.lstTokens.Count - 1), bBracketedNew, lstObjectsNew)
-                End If
-
-                'else if not an object or package operator, then add each parameter to the operator
-                Dim clsOperator As New clsRElementOperator(clsToken, bBracketedNew)
-                For intPos As Integer = 0 To clsToken.lstTokens.Count - 1
-                    clsOperator.lstParameters.Add(GetRParameter(clsToken.lstTokens.Item(intPos)))
-                Next
-                Return clsOperator
+                        'the last item in the parameter list is the element we need to return
+                        Return GetRElement(clsToken.lstTokens.Item(clsToken.lstTokens.Count - 1), bBracketedNew, strPackageNameNew, lstObjectsNew)
+                    Case "::"
+                        'the '::' operator has two parameters, the first is the pacakage name, the second contains the element we need to return
+                        Return GetRElement(clsToken.lstTokens.Item(1), bBracketedNew, clsToken.lstTokens.Item(0).strTxt)
+                    Case Else 'else if not an object or package operator, then add each parameter to the operator
+                        Dim clsOperator As New clsRElementOperator(clsToken, bBracketedNew)
+                        For intPos As Integer = 0 To clsToken.lstTokens.Count - 1
+                            clsOperator.lstParameters.Add(GetRParameter(clsToken.lstTokens.Item(intPos)))
+                        Next
+                        Return clsOperator
+                End Select
 
             Case clsRToken.typToken.ROperatorBracket
                 'Dim clsROperator As New clsRElementOperator
@@ -656,11 +682,12 @@
                 'End Select
                 'Return clsROperator
             Case clsRToken.typToken.RSyntacticName, clsRToken.typToken.RConstantString
-                If IsNothing(lstObjects) Then
-                    Return New clsRElement(clsToken, bBracketedNew)
-                Else
-                    Return New clsRElementProperty(clsToken, bBracketedNew, lstObjects)
+                'if element has a pacakage name or object list, then return a property element
+                If Not String.IsNullOrEmpty(strPackageName) OrElse Not IsNothing(lstObjects) Then
+                    Return New clsRElementProperty(clsToken, bBracketedNew, strPackageName, lstObjects)
                 End If
+                'else just return a regular element
+                Return New clsRElement(clsToken, bBracketedNew)
             Case Else
                 'TODO raise developer error: unknown token type
                 Exit Select

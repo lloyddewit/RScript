@@ -4,8 +4,11 @@
     Public strTerminator As String = "" 'only used for '[' and '[[' operators
     Public lstParameters As New List(Of clsRParameter)
 
-    Public Sub New(clsToken As clsRToken, Optional bBracketedNew As Boolean = False, Optional clsPresentationNew As clsRElementPresentation = Nothing)
+    Public Sub New(clsToken As clsRToken, Optional bBracketedNew As Boolean = False,
+                   Optional bFirstParamOnRightNew As Boolean = False,
+                   Optional clsPresentationNew As clsRElementPresentation = Nothing)
         MyBase.New(clsToken, bBracketedNew, clsPresentationNew)
+        bFirstParamOnRight = bFirstParamOnRightNew
     End Sub
 
     '''--------------------------------------------------------------------------------------------
