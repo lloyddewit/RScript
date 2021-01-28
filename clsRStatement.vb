@@ -1,4 +1,6 @@
-﻿Public Class clsRStatement
+﻿Imports System.Text.RegularExpressions
+
+Public Class clsRStatement
 
     ''' <summary>
     ''' If true, then when this R statement is converted to a script, then it will be 
@@ -446,13 +448,17 @@
             Select Case intPosOperators
                 Case intOperatorsBrackets    'handles '[' and '[['
                     'TODO
-                'Case intOperatorsUnaryOnly   'handles '+' and '-' when they are unary operators (e.g. 'a * -b)
+                    'Case intOperatorsUnaryOnly   'handles '+' and '-' when they are unary operators (e.g. 'a * -b)
                     'TODO
-                Case intOperatorsUserDefined 'handles all operators that start with '%'
+                    'Case intOperatorsUserDefined 'handles all operators that start with '%'
                     'TODO
-                Case Else 'handles all other operators including 'intOperatorsUnaryOnly' and 'intOperatorsTilda'
+                Case Else 'handles all other operators including 'intOperatorsUnaryOnly', 'intOperatorsUserDefined' and 'intOperatorsTilda'
                     'if token is not the operator we're looking for, then exit select
-                    If Not arrOperatorPrecedence(intPosOperators).Contains(clsToken.strTxt) Then
+                    If intPosOperators = intOperatorsUserDefined Then
+                        If Not Regex.IsMatch(clsToken.strTxt, "^%.*%$") Then
+                            Exit Select
+                        End If
+                    ElseIf Not arrOperatorPrecedence(intPosOperators).Contains(clsToken.strTxt) Then
                         Exit Select
                     End If
                     Select Case clsToken.enuToken
