@@ -3,12 +3,13 @@
 'TODO There are five types of constants: integer, logical, numeric, complex and string
 'TODO Private ReadOnly arrSpecialConstants() As String = {"NULL", "NA", "Inf", "NaN"}
 'TODO handle '...' (used in function definition)
+' TODO handle '.' normally just part of a syntactic name, but has a special meaning when in a function name, or when referring to data (represents no variable)
 'TODO insert invisible '{' and '}' for key words?
 'TODO is it possible for packages to be nested (e.g. 'p1::p1_1::f()')?
 'TODO handle function names as string constants. E.g 'x + y can equivalently be written "+"(x, y). Notice that since '+' is a non-standard function name, it needs to be quoted (see https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Writing-functions)'
+'
 ' 03/11/20 </para><para>
-' - The current class structure allows an operator to be assigned to (don't know if this is 
-' valid R) </para><para>
+' - The current class structure allows an operator to be assigned to (don't know if this is valid R) </para><para>
 ' - Software shall not reject any valid R (i.e. false negatives are *not* allowed).
 ' - However the software is not intended to check that text is valid R. 
 ' If the software populates RElement objects from invalid R code without raising an error 
@@ -20,28 +21,15 @@
 ' - Process multiline input. Newline indicates end of statement when: </para><para>
 '     1. line ends in an operator (excluding spaces and comments)  
 '     2. odd number of '()' or '[]' are open ('{}' are a special case related to key words)   
-' - Store spaces, comments and formatting new lines (also tabs?)
-' - Create automatic unit tests  
-' - Remove clsRTreeElement and parse string directly into clsRElement structure 
-' - Process ';', indicates end of statement 
-' - Process key words. Some key words (e.g. if) have a statement that returns true/false,   
-' followed by  a statement to execute (may be bracketed in '{}'
 ' - Use assigned statements to manage the state of the R environment (ask David for more details)  
 '</para><para>
 '
 ' 17/11/20
-' - move clsAssignment to clsRStatement  
 ' - function: if function parameter is single element then   
 '                 if function *definition* then element is name
 '                 else if function *call* then element is value
-' - add 'in' operator (distinguish from 'introvert')  
-' - add key words (if, else, repeat, while, function, for)  
-' - add '{'   
 ' - if comment on own line then link it to the next statement, else link to prev element  
 ' - support all assignments including '=' and assign to right operators  
-' - allow new operators (e.g. '%div%), make operator list dynamic  
-' - if a package is loaded that contains new operators then add the package's operators to the operator list  
-' - '@' operator (similar to '$', store at same level)  
 ' - store state of R environment   
 '       e.g. don't treat variables as text but store object they represent (e.g. value or function deinition)
 '       RSyntax already does this
@@ -180,18 +168,20 @@ Public Class clsRScript
         Dim stkNumOpenBrackets As Stack(Of Integer) = New Stack(Of Integer)
         stkNumOpenBrackets.Push(0)
 
-        Dim stkTokenState As Stack(Of typTokenState) = New Stack(Of typTokenState)
-        stkTokenState.Push(typTokenState.WaitingForEndScript)
-
         Dim stkIsScriptEnclosedByCurlyBrackets As Stack(Of Boolean) = New Stack(Of Boolean)
         stkIsScriptEnclosedByCurlyBrackets.Push(True)
 
+        Dim stkTokenState As Stack(Of typTokenState) = New Stack(Of typTokenState)
+        stkTokenState.Push(typTokenState.WaitingForEndScript)
+
         For intPos As Integer = 0 To lstLexemes.Count - 1
 
-            If stkNumOpenBrackets.Count < 1 OrElse
-                    stkTokenState.Count < 1 OrElse
-                    stkIsScriptEnclosedByCurlyBrackets.Count < 1 Then
-                'TODO developer error
+            If stkNumOpenBrackets.Count < 1 Then
+                Throw New Exception("The stack storing the number of open brackets must have at least one value.")
+            ElseIf stkIsScriptEnclosedByCurlyBrackets.Count < 1 Then
+                Throw New Exception("The stack storing the number of open curly brackets must have at least one value.")
+            ElseIf stkTokenState.Count < 1 Then
+                Throw New Exception("The stack storing the current state of the token parsing must have at least one value.")
             End If
 
             'store previous non-space lexeme
@@ -249,12 +239,10 @@ Public Class clsRScript
                     Case typTokenState.WaitingForOpenCondition
 
                         If Not clsToken.enuToken = clsRToken.typToken.RNewLine Then
-                            If Not clsToken.strTxt = "(" Then
-                                'TODO developer error
+                            If clsToken.strTxt = "(" Then
+                                stkTokenState.Pop()
+                                stkTokenState.Push(typTokenState.WaitingForCloseCondition)
                             End If
-
-                            stkTokenState.Pop()
-                            stkTokenState.Push(typTokenState.WaitingForCloseCondition)
                         End If
 
                     Case typTokenState.WaitingForCloseCondition
@@ -298,7 +286,7 @@ Public Class clsRScript
                         End If
 
                     Case Else
-                        'TODO raise developer error
+                        Throw New Exception("The token is in an unknown state.")
                 End Select
             End If
 

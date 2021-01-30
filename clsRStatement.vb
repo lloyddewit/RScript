@@ -79,7 +79,7 @@ Public Class clsRStatement
 
         'if the tree does not include at least one token, then raise development error
         If lstTokenTree.Count < 1 Then
-            Exit Sub 'TODO development error: token tree must contain at least one token
+            Throw New Exception("The token tree must contain at least one token.")
         End If
 
         'if the statement includes an assignment, construct assignment element
@@ -128,7 +128,7 @@ Public Class clsRStatement
                 'else if the statement has a right assignment (e.g. 'value->x' or 'value->>x')
                 strScript = strElement & strAssignmentOperator & strAssigment
             Else
-                'TODO development error: unexpected assignment operator
+                Throw New Exception("The statement's assignment operator is an unknown type.")
                 Return Nothing
             End If
         End If
@@ -298,7 +298,7 @@ Public Class clsRStatement
                         intPos >= lstTokens.Count - 1 OrElse
                         (lstTokens.Item(intPos + 1).enuToken = clsRToken.typToken.RSpace AndAlso
                         intPos >= lstTokens.Count - 2) Then
-                    'TODO throw developer error
+                    Throw New Exception("The function's parameters have an unexpected format and cannot be processed.")
                     Exit While
                 End If
                 'make the function's open bracket (and any preceeding spaces) a child of the function name
@@ -433,7 +433,7 @@ Public Class clsRStatement
         'TODO process spaces, comments and newlines
 
         'if nothing to process then return empty list
-        If lstTokens.Count <= 0 Then
+        If lstTokens.Count < 1 Then
             Return New List(Of clsRToken)
         End If
 
@@ -463,15 +463,19 @@ Public Class clsRStatement
                     End If
                     Select Case clsToken.enuToken
                         Case clsRToken.typToken.ROperatorBinary
-                            If IsNothing(clsTokenPrev) Then
-                                'TODO throw developer error: binary operator missing previous parameter
-                                Exit Select
-                            End If
                             'edge case: if we are looking for unary '+' or '-' and we found a binary '+' or '-'
                             If intPosOperators = intOperatorsUnaryOnly Then
                                 'do not process (binary '+' and '-' have a lower precedence and will be processed later)
                                 Exit Select
+                                'edge case: if the operator already has children then it means that it has already been processed.
+                                '    This happens when the child is in the same precedence group as the parent but was processed first 
+                                '    in accordance with the left to right rule (e.g. 'a/b*c').
+                            ElseIf clsToken.lstTokens.Count > 0 Then
+                                Exit Select
+                            ElseIf IsNothing(clsTokenPrev) Then
+                                Throw New Exception("The binary operator has no parameter on its left.")
                             End If
+
                             'make the previous and next tokens, the children of the current token
                             clsToken.lstTokens.Add(clsTokenPrev.CloneMe)
                             bPrevTokenProcessed = True
@@ -482,9 +486,8 @@ Public Class clsRStatement
                             Dim clsTokenNext As clsRToken
                             While intPosTokens < lstTokens.Count - 1
                                 clsTokenNext = GetNextToken(lstTokens, intPosTokens, intPosOperators)
-                                If IsNothing(clsTokenNext) OrElse
-                                        Not clsToken.enuToken = clsTokenNext.enuToken OrElse
-                                        Not clsToken.strTxt = clsTokenNext.strTxt Then
+                                If Not clsToken.enuToken = clsTokenNext.enuToken OrElse
+                                         Not clsToken.strTxt = clsTokenNext.strTxt Then
                                     Exit While
                                 End If
 
@@ -503,15 +506,14 @@ Public Class clsRStatement
                             intPosTokens += 1
                         Case clsRToken.typToken.ROperatorUnaryLeft
                             If IsNothing(clsTokenPrev) OrElse Not intPosOperators = intOperatorsTilda Then
-                                'TODO throw developer error: illegal unary left operator ('~' is the only valid unary left operator)
+                                Throw New Exception("Illegal unary left operator ('~' is the only valid unary left operator).")
                                 Exit Select
                             End If
                             'make the previous token, the child of the current operator token
                             clsToken.lstTokens.Add(clsTokenPrev.CloneMe)
                             bPrevTokenProcessed = True
                         Case Else
-                            'TODO throw developer error: expecting an operator
-                            Exit Select
+                            Throw New Exception("The token has an unknown operator type.")
                     End Select
             End Select
 
@@ -532,8 +534,7 @@ Public Class clsRStatement
         End While
 
         If IsNothing(clsTokenPrev) Then
-            'TODO throw developer error: There should always be at least one token still to add to the tree
-            Return Nothing
+            Throw New Exception("Expected that there would still be a token to add to the tree.")
         End If
         lstTokensNew.Add(clsTokenPrev.CloneMe)
 
@@ -554,8 +555,7 @@ Public Class clsRStatement
     Private Function GetNextToken(lstTokens As List(Of clsRToken), intPosTokens As Integer, intPosOperators As Integer) As clsRToken
 
         If intPosTokens >= (lstTokens.Count - 1) Then
-            'TODO throw developer error: operator already has children or is missing a parameter
-            Return Nothing
+            Throw New Exception("Token list ended unexpectedly.")
         End If
 
         'process the next token's children
@@ -613,8 +613,7 @@ Public Class clsRStatement
             Case clsRToken.typToken.ROperatorUnaryLeft
                 Dim clsOperator As New clsRElementOperator(clsToken, bBracketedNew)
                 If clsToken.lstTokens.Count < 1 Then
-                    'TODO developer error: unary left operator must have at least one parameter
-                    Return Nothing
+                    Throw New Exception("The unary left operator must have at least one parameter.")
                 End If
                 clsOperator.lstParameters.Add(GetRParameter(clsToken.lstTokens.Item(0)))
                 Return clsOperator
@@ -622,15 +621,14 @@ Public Class clsRStatement
             Case clsRToken.typToken.ROperatorUnaryRight
                 Dim clsOperator As New clsRElementOperator(clsToken, bBracketedNew, True)
                 If clsToken.lstTokens.Count < 1 Then
-                    'TODO developer error: unary right operator must have at least one parameter
-                    Return Nothing
+                    Throw New Exception("The unary right operator must have at least one parameter.")
                 End If
                 clsOperator.lstParameters.Add(GetRParameter(clsToken.lstTokens.Item(0)))
                 Return clsOperator
 
             Case clsRToken.typToken.ROperatorBinary
                 If clsToken.lstTokens.Count < 2 Then
-                    'TODO developer error: binary operator must have at least 2 parameters
+                    Throw New Exception("The binary operator must have at least 2 parameters.")
                     Return Nothing
                 End If
 
@@ -647,8 +645,7 @@ Public Class clsRStatement
                                     clsToken.lstTokens.Item(intPos).enuToken = clsRToken.typToken.ROperatorBinary AndAlso
                                     clsToken.lstTokens.Item(intPos).strTxt = "::" Then
                                 If clsToken.lstTokens.Item(intPos).lstTokens.Count < 2 Then
-                                    'TODO developer error: package operator ('::') should have at least 2 parameters
-                                    Return Nothing
+                                    Throw New Exception("The package operator ('::') should have at least 2 parameters.")
                                 End If
                                 strPackageNameNew = clsToken.lstTokens.Item(intPos).lstTokens.Item(0).strTxt
                                 lstObjectsNew.Add(GetRElement(clsToken.lstTokens.Item(intPos).lstTokens.Item(1)))
@@ -695,11 +692,9 @@ Public Class clsRStatement
                 'else just return a regular element
                 Return New clsRElement(clsToken, bBracketedNew)
             Case Else
-                'TODO raise developer error: unknown token type
-                Exit Select
+                Throw New Exception("The token has an unexpected type.")
         End Select
-        'TODO developer error
-        Return Nothing 'should never reach this point
+        Throw New Exception("It should be impossible for the code to reach this point.")
     End Function
 
     Private Function GetRParameterNamed(clsToken As clsRToken) As clsRParameterNamed
@@ -715,8 +710,7 @@ Public Class clsRStatement
                     clsParameterNamed.clsArgValue = GetRElement(clsToken.lstTokens.Item(1))
                     Return clsParameterNamed
                 Else
-                    'TODO developer error: '=' in a parmeter must always have an argument name and argument value
-                    Return Nothing
+                    Throw New Exception("A function parameter with an '=' must always have an argument name and argument value.")
                 End If
             Case ","
                 'if ',' is followed by a parameter name or value (e.g. 'fn(a,b)'), then return the parameter
@@ -726,9 +720,8 @@ Public Class clsRStatement
                     Return (New clsRParameterNamed)
                 End If
             Case "("
-                If clsToken.lstTokens.Count = 0 Then
-                    'TODO developer error: '(' must have at least one child
-                    Return Nothing
+                If clsToken.lstTokens.Count < 1 Then
+                    Throw New Exception("A '(' must have at least one child.")
                 End If
                 Dim clsParameterNamed As New clsRParameterNamed With {
                     .clsArgValue = GetRElement(clsToken.lstTokens.Item(0), True)
@@ -746,16 +739,14 @@ Public Class clsRStatement
 
     Private Function GetRParameter(clsToken As clsRToken) As clsRParameter
         If IsNothing(clsToken) Then
-            'TODO developer error: operator parameter is empty
-            Return Nothing
+            Throw New ArgumentException("Cannot create a parameter from an empty token.")
         End If
         Return New clsRParameter With {.clsArgValue = GetRElement(clsToken)}
     End Function
 
     Private Function GetLstTokensAsString(lstTokens As List(Of clsRToken), Optional strIndent As String = "") As String
         If lstTokens Is Nothing OrElse lstTokens.Count = 0 Then
-            'TODO throw exception
-            Return Nothing
+            Throw New ArgumentException("Cannot convert an empty token into a string.")
         End If
         Dim strTxt As String = strIndent
 
