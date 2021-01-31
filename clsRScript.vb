@@ -3,31 +3,19 @@
 'TODO There are five types of constants: integer, logical, numeric, complex and string
 'TODO Private ReadOnly arrSpecialConstants() As String = {"NULL", "NA", "Inf", "NaN"}
 'TODO handle '...' (used in function definition)
-' TODO handle '.' normally just part of a syntactic name, but has a special meaning when in a function name, or when referring to data (represents no variable)
+'TODO handle '.' normally just part of a syntactic name, but has a special meaning when in a function name, or when referring to data (represents no variable)
 'TODO insert invisible '{' and '}' for key words?
 'TODO is it possible for packages to be nested (e.g. 'p1::p1_1::f()')?
 'TODO handle function names as string constants. E.g 'x + y can equivalently be written "+"(x, y). Notice that since '+' is a non-standard function name, it needs to be quoted (see https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Writing-functions)'
-'
-' 03/11/20 </para><para>
-' - The current class structure allows an operator to be assigned to (don't know if this is valid R) </para><para>
-' - Software shall not reject any valid R (i.e. false negatives are *not* allowed).
-' - However the software is not intended to check that text is valid R. 
-' If the software populates RElement objects from invalid R code without raising an error 
-' then that is acceptable (i.e. false positives are allowed). </para><para>
-' 
-' TODO: </para><para>
+'TODO currently all newlines (vbLf, vbCr and vbCrLf) are converted to vbLf. Is it important to remember what the original new line character was?
 ' 
 ' 03/11/20
-' - Process multiline input. Newline indicates end of statement when: </para><para>
+' - Process multiline input. Newline indicates end of statement when: 
 '     1. line ends in an operator (excluding spaces and comments)  
 '     2. odd number of '()' or '[]' are open ('{}' are a special case related to key words)   
 ' - Use assigned statements to manage the state of the R environment (ask David for more details)  
-'</para><para>
 '
 ' 17/11/20
-' - function: if function parameter is single element then   
-'                 if function *definition* then element is name
-'                 else if function *call* then element is value
 ' - if comment on own line then link it to the next statement, else link to prev element  
 ' - support all assignments including '=' and assign to right operators  
 ' - store state of R environment   
@@ -39,16 +27,6 @@ Public Class clsRScript
 
     Public lstRStatements As List(Of clsRStatement)
 
-    Private ReadOnly arrROperators() As String = {"::", ":::", "$", "@", "^", ":", "%%", "%/%",
-        "%*%", "%o%", "%x%", "%in%", "/", "*", "+", "-", "<", ">", "<=", ">=", "==", "!=", "!", "&",
-        "&&", "|", "||", "~", "->", "->>", "<-", "<<-", "="}
-    Private ReadOnly arrROperatorBrackets() As String = {"[", "]", "[[", "]]"}
-    Private ReadOnly arrROperatorUnary() As String = {"+", "-", "!", "~"}
-    Private ReadOnly arrRPartialOperators() As String = {"<<"}
-    Private ReadOnly arrRBrackets() As String = {"(", ")", "{", "}"}
-    Private ReadOnly arrRNewLines() As String = {vbCr, vbLf, vbCrLf}
-    Private ReadOnly arrKeyWords() As String = {"if", "else", "repeat", "while", "function", "for", "in", "next", "break"}
-
     ''' <summary>   The current state of the token parsing. </summary>
     Private Enum typTokenState
         WaitingForOpenCondition
@@ -58,9 +36,22 @@ Public Class clsRScript
     End Enum
 
     '''--------------------------------------------------------------------------------------------
-    ''' <summary>   Constructor TODO. </summary>
+    ''' <summary>   Parses the R script in <paramref name="strInput"/> and populates the list of
+    '''             R statements.
+    '''             <para>
+    '''             This subroutine will accept, and correctly process all valid R. However, this 
+    '''             class does not attempt to validate <paramref name="strInput"/>. If it is not 
+    '''             valid R then this subroutine may still process the script without throwing an 
+    '''             exception. In this case, the list of R statements will be undefined.
+    '''             </para><para>
+    '''             In other words, this subroutine will never generate false negatives (reject 
+    '''             valid R) but may generate false positives (accept invalid R).
+    '''             </para></summary>
     '''
-    ''' <param name="strInput"> The input. </param>
+    ''' <param name="strInput"> The R script to parse. This must be valid R according to the 
+    '''                         R language specification at 
+    '''                         https://cran.r-project.org/doc/manuals/r-release/R-lang.html. 
+    '''                         </param>
     '''--------------------------------------------------------------------------------------------
     Public Sub New(strInput As String)
         If IsNothing(strInput) Then
@@ -77,17 +68,13 @@ Public Class clsRScript
     ''' <summary>   Returns <paramref name="strRScript"/> as a list of its constituent lexemes. 
     '''             A lexeme is a string of characters that represent a valid R element 
     '''             (identifier, operator, keyword, seperator, bracket etc.). A lexeme does not 
-    '''             include any type information.<para>
+    '''             include any type information.
+    '''             <para>
     '''             This function identifies lexemes using a technique known as 'longest match' 
     '''             or 'maximal munch'. It keeps adding characters to the lexeme one at a time 
     '''             until it reaches a character that is not in the set of characters acceptable 
     '''             for that lexeme.
-    '''             </para><para>
-    '''             This function assumes that <paramref name="strRScript"/> is a syntactically 
-    '''             correct R script. This function does not attempt to validate 
-    '''             <paramref name="strRScript"/>. If <paramref name="strRScript"/> is not 
-    '''             syntactically correct then the values returned by this function will also be 
-    '''             invalid.</para></summary>
+    '''             </para></summary>
     '''
     ''' <param name="strRScript"> The R script to convert (must be syntactically correct R). </param>
     '''
@@ -114,20 +101,19 @@ Public Class clsRScript
                 '           of '6' is a single ']' bracket and is not part of a double ']]' bracket.
                 '           To achieve this, we push each open bracket to a stack so that we know 
                 '           which type of closing bracket is expected for each open bracket.
-                If arrROperatorBrackets.Contains(strTextNew) Then
+                If IsOperatorBrackets(strTextNew) Then
                     Select Case strTextNew
                         Case "["
                             stkIsSingleBracket.Push(True)
                         Case "[["
                             stkIsSingleBracket.Push(False)
-                        Case "]"
-                            If stkIsSingleBracket.Count > 0 Then
-                                stkIsSingleBracket.Pop()
+                        Case "]", "]]"
+                            If stkIsSingleBracket.Count < 1 Then
+                                Throw New Exception("Closing bracket detected ('" & strTextNew & "') with no corresponding open bracket.")
                             End If
-                        Case "]]"
-                            If stkIsSingleBracket.Count > 0 Then
-                                stkIsSingleBracket.Pop()
-                            End If
+                            stkIsSingleBracket.Pop()
+                        Case Else
+                            Throw New Exception("Unknown bracket detected ('" & strTextNew & "').")
                     End Select
                 End If
 
@@ -185,7 +171,7 @@ Public Class clsRScript
             End If
 
             'store previous non-space lexeme
-            If IsRElement(strLexemeCurrent) Then
+            If IsElement(strLexemeCurrent) Then
                 strLexemePrev = strLexemeCurrent
             End If
 
@@ -268,8 +254,8 @@ Public Class clsRScript
 
                         If clsToken.enuToken = clsRToken.typToken.RNewLine AndAlso
                                 stkNumOpenBrackets.Peek() = 0 AndAlso               'if there are no open brackets
-                                Not IsUserDefinedOperator(strLexemePrev) AndAlso    'if line doesn't end in a user-defined operator
-                                Not (arrROperators.Contains(strLexemePrev) AndAlso  'if line doesn't end in a predefined operator
+                                Not IsOperatorUserDefined(strLexemePrev) AndAlso    'if line doesn't end in a user-defined operator
+                                Not (IsOperatorReserved(strLexemePrev) AndAlso  'if line doesn't end in a predefined operator
                                      Not strLexemePrev = "~") Then                  '    unless it's a tilda (the only operator that doesn't need a right-hand value)
                             clsToken.enuToken = clsRToken.typToken.REndStatement
                         End If
@@ -359,21 +345,22 @@ Public Class clsRScript
                 Regex.IsMatch(strNew, ".+\r$") OrElse                        'string is >1 char and ends in carriage return
                 Regex.IsMatch(strNew, "^%.*%.+") OrElse                      'string is a user-defined operator followed by another character
                 Regex.IsMatch(strNew, "^'.*'.+") OrElse                      'string is a single quoted string followed by another character
-                Regex.IsMatch(strNew, "^"".*"".+") Then                      'string is a double quoted string followed by another character
+                Regex.IsMatch(strNew, "^"".*"".+") OrElse                    'string is a double quoted string followed by another character
+                Regex.IsMatch(strNew, "^`.*`.+") Then                        'string is a backtick quoted string followed by another character
             Return False
         End If
 
         'if string is a valid ...
         If IsSyntacticName(strNew) OrElse                    'syntactic name or reserved word
-                arrROperators.Contains(strNew) OrElse        'operator (e.g. '+')
-                arrROperatorBrackets.Contains(strNew) OrElse 'bracket operator (e.g. '[')
-                arrRPartialOperators.Contains(strNew) OrElse 'partial operator (e.g. ':')
-                arrRNewLines.Contains(strNew) OrElse         'newlines (e.g. '\n')
+                IsOperatorReserved(strNew) OrElse            'operator (e.g. '+')
+                IsOperatorBrackets(strNew) OrElse            'bracket operator (e.g. '[')
+                strNew = "<<" OrElse                         'partial operator (e.g. ':')
+                IsNewLine(strNew) OrElse                     'newlines (e.g. '\n')
                 strNew = "," OrElse strNew = ";" OrElse      'parameter separator or end statement
-                arrRBrackets.Contains(strNew) OrElse         'bracket (e.g. '{')
+                IsBracket(strNew) OrElse                     'bracket (e.g. '{')
                 IsSequenceOfSpaces(strNew) OrElse            'sequence of spaces
                 IsConstantString(strNew) OrElse              'string constant (starts with single or double)
-                IsUserDefinedOperator(strNew) OrElse         'user-defined operator (starts with '%*')
+                IsOperatorUserDefined(strNew) OrElse         'user-defined operator (starts with '%*')
                 IsComment(strNew) Then                       'comment (starts with '#*')
             Return True
         End If
@@ -408,7 +395,7 @@ Public Class clsRScript
             .strTxt = strLexemeCurrent
         }
 
-        If arrKeyWords.Contains(strLexemeCurrent) Then               'reserved key word (e.g. if, else etc.)
+        If IsKeyWord(strLexemeCurrent) Then                         'reserved key word (e.g. if, else etc.)
             clsRTokenNew.enuToken = clsRToken.typToken.RKeyWord
         ElseIf IsSyntacticName(strLexemeCurrent) Then
             If strLexemeNext = "(" Then
@@ -420,7 +407,7 @@ Public Class clsRScript
             clsRTokenNew.enuToken = clsRToken.typToken.RComment
         ElseIf IsConstantString(strLexemeCurrent) Then               'string literal (starts with single or double quote)
             clsRTokenNew.enuToken = clsRToken.typToken.RConstantString
-        ElseIf arrRNewLines.Contains(strLexemeCurrent) Then          'new line (e.g. '\n')
+        ElseIf IsNewLine(strLexemeCurrent) Then                      'new line (e.g. '\n')
             clsRTokenNew.enuToken = clsRToken.typToken.RNewLine
         ElseIf strLexemeCurrent = ";" Then                           'end statement
             clsRTokenNew.enuToken = clsRToken.typToken.REndStatement
@@ -428,15 +415,15 @@ Public Class clsRScript
             clsRTokenNew.enuToken = clsRToken.typToken.RSeparator
         ElseIf IsSequenceOfSpaces(strLexemeCurrent) Then             'sequence of spaces (needs to be after separator check, 
             clsRTokenNew.enuToken = clsRToken.typToken.RSpace        '        else linefeed is recognised as space)
-        ElseIf arrRBrackets.Contains(strLexemeCurrent) Then          'bracket (e.g. '{')
+        ElseIf IsBracket(strLexemeCurrent) Then                      'bracket (e.g. '{')
             If strLexemeCurrent = "}" Then
                 clsRTokenNew.enuToken = clsRToken.typToken.REndScript
             Else
                 clsRTokenNew.enuToken = clsRToken.typToken.RBracket
             End If
-        ElseIf arrROperatorBrackets.Contains(strLexemeCurrent) Then  'bracket operator (e.g. '[')
+        ElseIf IsOperatorBrackets(strLexemeCurrent) Then             'bracket operator (e.g. '[')
             clsRTokenNew.enuToken = clsRToken.typToken.ROperatorBracket
-        ElseIf arrROperatorUnary.Contains(strLexemeCurrent) AndAlso  'unary right operator (e.g. '!x')
+        ElseIf IsOperatorUnary(strLexemeCurrent) AndAlso             'unary right operator (e.g. '!x')
                 (String.IsNullOrEmpty(strLexemePrev) OrElse
                 Not Regex.IsMatch(strLexemePrev, "[a-zA-Z0-9_\.)\]]$")) Then
             clsRTokenNew.enuToken = clsRToken.typToken.ROperatorUnaryRight
@@ -444,19 +431,19 @@ Public Class clsRScript
                 (String.IsNullOrEmpty(strLexemeNext) OrElse
                 Not Regex.IsMatch(strLexemeNext, "^[a-zA-Z0-9_\.(\+\-\!~]")) Then
             clsRTokenNew.enuToken = clsRToken.typToken.ROperatorUnaryLeft
-        ElseIf arrROperators.Contains(strLexemeCurrent) OrElse       'binary operator (e.g. '+')
+        ElseIf IsOperatorReserved(strLexemeCurrent) OrElse           'binary operator (e.g. '+')
                 Regex.IsMatch(strLexemeCurrent, "^%.*%$") Then
             clsRTokenNew.enuToken = clsRToken.typToken.ROperatorBinary
         Else
-            clsRTokenNew.enuToken = clsRToken.typToken.RInvalid
+            Throw New Exception("Cannot build a valid token from lexeme \'" & strLexemeCurrent & "\'.")
         End If
 
         Return clsRTokenNew
     End Function
 
     '''--------------------------------------------------------------------------------------------
-    ''' <summary>   Returns true if <paramref name="strTxt"/> is a valid R syntactic name or 
-    '''             key word, else returns false.<para>
+    ''' <summary>   Returns true if <paramref name="strTxt"/> is a complete or partial 
+    '''             valid R syntactic name or key word, else returns false.<para>
     '''             Please note that the rules for syntactic names are actually stricter than 
     '''             the rules used in this function, but this library assumes it is parsing valid 
     '''             R code. </para></summary>
@@ -467,10 +454,11 @@ Public Class clsRScript
     '''             else returns false.</returns>
     '''--------------------------------------------------------------------------------------------
     Private Function IsSyntacticName(strTxt As String) As Boolean
-        If Not String.IsNullOrEmpty(strTxt) AndAlso Regex.IsMatch(strTxt, "^[a-zA-Z0-9_\.]+$") Then
-            Return True
+        If String.IsNullOrEmpty(strTxt) Then
+            Return False
         End If
-        Return False
+        Return Regex.IsMatch(strTxt, "^[a-zA-Z0-9_\.]+$") OrElse
+               Regex.IsMatch(strTxt, "^`.*")
     End Function
 
     '''--------------------------------------------------------------------------------------------
@@ -537,8 +525,8 @@ Public Class clsRScript
     ''' <returns>   True  if <paramref name="strTxt"/> is a functional R element
     '''             (i.e. not a space, comment or new line), else returns false. </returns>
     '''--------------------------------------------------------------------------------------------
-    Private Function IsRElement(strTxt As String) As Boolean
-        If Not arrRNewLines.Contains(strTxt) AndAlso
+    Private Function IsElement(strTxt As String) As Boolean
+        If Not IsNewLine(strTxt) AndAlso
            Not IsSequenceOfSpaces(strTxt) AndAlso
            Not IsComment(strTxt) Then
             Return True
@@ -555,11 +543,98 @@ Public Class clsRScript
     ''' <returns>   True if <paramref name="strTxt"/> is a complete or partial  
     '''             user-defined operator, else returns false.</returns>
     '''--------------------------------------------------------------------------------------------
-    Private Function IsUserDefinedOperator(strTxt As String) As Boolean
+    Private Function IsOperatorUserDefined(strTxt As String) As Boolean
         If Not String.IsNullOrEmpty(strTxt) AndAlso Regex.IsMatch(strTxt, "^%.*") Then
             Return True
         End If
         Return False
     End Function
+
+    '''--------------------------------------------------------------------------------------------
+    ''' <summary>   Returns true if <paramref name="strTxt"/> is a resrved operator, else returns 
+    '''             false.</summary>
+    '''
+    ''' <param name="strTxt">   The text to check. </param>
+    '''
+    ''' <returns>   True if <paramref name="strTxt"/> is a reserved operator, else returns false.
+    '''             </returns>
+    '''--------------------------------------------------------------------------------------------
+    Private Function IsOperatorReserved(strTxt As String) As Boolean
+        Dim arrROperators() As String = {"::", ":::", "$", "@", "^", ":", "%%", "%/%",
+        "%*%", "%o%", "%x%", "%in%", "/", "*", "+", "-", "<", ">", "<=", ">=", "==", "!=", "!", "&",
+        "&&", "|", "||", "~", "->", "->>", "<-", "<<-", "="}
+        Return arrROperators.Contains(strTxt)
+    End Function
+
+    '''--------------------------------------------------------------------------------------------
+    ''' <summary>   Returns true if <paramref name="strTxt"/> is a bracket operator, else returns 
+    '''             false.</summary>
+    '''
+    ''' <param name="strTxt">   The text to check. </param>
+    '''
+    ''' <returns>   True if <paramref name="strTxt"/> is a bracket operator, else returns false.
+    '''             </returns>
+    '''--------------------------------------------------------------------------------------------
+    Private Function IsOperatorBrackets(strTxt As String) As Boolean
+        Dim arrROperatorBrackets() As String = {"[", "]", "[[", "]]"}
+        Return arrROperatorBrackets.Contains(strTxt)
+    End Function
+
+    '''--------------------------------------------------------------------------------------------
+    ''' <summary>   Returns true if <paramref name="strTxt"/> is a unary operator, else returns 
+    '''             false.</summary>
+    '''
+    ''' <param name="strTxt">   The text to check. </param>
+    '''
+    ''' <returns>   True if <paramref name="strTxt"/> is a unary operator, else returns false.
+    '''             </returns>
+    '''--------------------------------------------------------------------------------------------
+    Private Function IsOperatorUnary(strTxt As String) As Boolean
+        Dim arrROperatorUnary() As String = {"+", "-", "!", "~"}
+        Return arrROperatorUnary.Contains(strTxt)
+    End Function
+
+    '''--------------------------------------------------------------------------------------------
+    ''' <summary>   Returns true if <paramref name="strTxt"/> is a bracket, else returns 
+    '''             false.</summary>
+    '''
+    ''' <param name="strTxt">   The text to check. </param>
+    '''
+    ''' <returns>   True if <paramref name="strTxt"/> is a bracket, else returns false.
+    '''             </returns>
+    '''--------------------------------------------------------------------------------------------
+    Private Function IsBracket(strTxt As String) As Boolean
+        Dim arrRBrackets() As String = {"(", ")", "{", "}"}
+        Return arrRBrackets.Contains(strTxt)
+    End Function
+
+    '''--------------------------------------------------------------------------------------------
+    ''' <summary>   Returns true if <paramref name="strTxt"/> is a new line, else returns 
+    '''             false.</summary>
+    '''
+    ''' <param name="strTxt">   The text to check. </param>
+    '''
+    ''' <returns>   True if <paramref name="strTxt"/> is a new line, else returns false.
+    '''             </returns>
+    '''--------------------------------------------------------------------------------------------
+    Private Function IsNewLine(strTxt As String) As Boolean
+        Dim arrRNewLines() As String = {vbCr, vbLf, vbCrLf}
+        Return arrRNewLines.Contains(strTxt)
+    End Function
+
+    '''--------------------------------------------------------------------------------------------
+    ''' <summary>   Returns true if <paramref name="strTxt"/> is a key word, else returns 
+    '''             false.</summary>
+    '''
+    ''' <param name="strTxt">   The text to check. </param>
+    '''
+    ''' <returns>   True if <paramref name="strTxt"/> is a key word, else returns false.
+    '''             </returns>
+    '''--------------------------------------------------------------------------------------------
+    Private Function IsKeyWord(strTxt As String) As Boolean
+        Dim arrKeyWords() As String = {"if", "else", "repeat", "while", "function", "for", "in", "next", "break"}
+        Return arrKeyWords.Contains(strTxt)
+    End Function
+
 
 End Class

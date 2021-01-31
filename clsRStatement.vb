@@ -91,7 +91,7 @@ Public Class clsRStatement
                 strAssignmentOperator = lstTokenTree.Item(0).strTxt
                 clsAssignment = GetRElement(lstTokenTree.Item(0).lstTokens.Item(0))
                 clsElement = GetRElement(lstTokenTree.Item(0).lstTokens.Item(1))
-            ElseIf arrOperatorPrecedence(intOperatorsRightAssignment).Contains(lstTokenBrackets.Item(0).strTxt) Then
+            ElseIf arrOperatorPrecedence(intOperatorsRightAssignment).Contains(lstTokenTree.Item(0).strTxt) Then
                 'else if the statement has a right assignment (e.g. 'value->x' or 'value->>x')
                 strAssignmentOperator = lstTokenTree.Item(0).strTxt
                 clsAssignment = GetRElement(lstTokenTree.Item(0).lstTokens.Item(1))
