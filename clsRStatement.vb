@@ -139,10 +139,6 @@ Public Class clsRStatement
 
     Private Function GetScriptElement(clsElement As Object) As String
 
-        'Public strTxt As String
-        'Public bBracketed As Boolean
-        'Public clsPresentation As clsRElementPresentation
-
         If IsNothing(clsElement) Then
             Return Nothing
         End If
@@ -151,8 +147,6 @@ Public Class clsRStatement
 
         Select Case clsElement.GetType()
             Case GetType(clsRElementFunction)
-                'Public lstParameters As New List(Of clsRParameterNamed)
-
                 strScript &= GetScriptElementProperty(clsElement)
                 strScript &= "("
                 If Not IsNothing(clsElement.lstParameters) Then
@@ -166,15 +160,8 @@ Public Class clsRStatement
                 End If
                 strScript &= ")"
             Case GetType(clsRElementProperty)
-                'Public strPackageName As String = "" 'only used for functions and variables (e.g. 'constants::syms$h')
-                'Public lstObjects As New List(Of clsRElement) 'only used for functions and variables (e.g. 'constants::syms$h')
-
                 strScript &= GetScriptElementProperty(clsElement)
             Case GetType(clsRElementOperator)
-                'Public bFirstParamOnRight As Boolean = False
-                'Public strTerminator As String = "" 'only used for '[' and '[[' operators
-                'Public lstRParameters As New List(Of clsRParameter)
-
                 Dim bPrefixOperator As Boolean = clsElement.bFirstParamOnRight
                 For Each clsRParameter In clsElement.lstParameters
                     strScript &= If(bPrefixOperator, clsElement.strTxt, "")
@@ -182,7 +169,7 @@ Public Class clsRStatement
                     strScript &= GetScriptElement(clsRParameter.clsArgValue)
                 Next
                 strScript &= If(clsElement.lstParameters.Count = 1 AndAlso Not clsElement.bFirstParamOnRight, clsElement.strTxt, "")
-            Case GetType(clsRElementKeyWord)
+            Case GetType(clsRElementKeyWord) 'TODO
             Case GetType(clsRElement)
                 strScript &= clsElement.strTxt
         End Select
