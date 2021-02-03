@@ -1,12 +1,8 @@
-﻿'---------------------------------------------------------------------------------------------------
-' file:		clsRToken.vb
-'
-' summary:	TBD
-'---------------------------------------------------------------------------------------------------
-Imports System.Text.RegularExpressions
+﻿Imports System.Text.RegularExpressions
 
 Public Class clsRToken
-    ''' <summary>   Values that represent TBD. </summary>
+    ''' <summary>   The different types of R element (function name, key word, comment etc.) 
+    '''             that the token may represent. </summary>
     Public Enum typToken
         RSyntacticName
         RFunctionName
@@ -23,19 +19,40 @@ Public Class clsRToken
         ROperatorUnaryRight
         ROperatorBinary
         ROperatorBracket
+        RPresentation
         RInvalid
     End Enum
 
-    ''' <summary>   TBD. </summary>
+    ''' <summary>   The lexeme associated with the token. </summary>
     Public strTxt As String
-    ''' <summary>   TBD. </summary>
+    ''' <summary>   The token type (function name, key word, comment etc.).  </summary>
     Public enuToken As typToken
-    ''' <summary>   TBD. </summary>
+    ''' <summary>   The token's children. </summary>
     Public lstTokens As New List(Of clsRToken)
 
     '''--------------------------------------------------------------------------------------------
     ''' <summary>
-    '''     Returns <paramref name="strLexemeCurrent"/> as a token. <para>
+    '''     Constructs a new token with lexeme <paramref name="strTxtNew"/> and token type 
+    '''     <paramref name="enuTokenNew"/>.
+    '''     <para>
+    '''     A token is a string of characters that represent a valid R element, plus meta data about
+    '''     the token type (identifier, operator, keyword, bracket etc.).
+    '''     </para>
+    ''' </summary>
+    '''
+    ''' <param name="strTxtNew">    The lexeme to associate with the token. </param>
+    ''' <param name="enuTokenNew">  The token type (function name, key word, comment etc.). </param>
+    '''--------------------------------------------------------------------------------------------
+    Public Sub New(strTxtNew As String, enuTokenNew As typToken)
+        strTxt = strTxtNew
+        enuToken = enuTokenNew
+    End Sub
+
+
+    '''--------------------------------------------------------------------------------------------
+    ''' <summary>
+    '''     Constructs a token from <paramref name="strLexemeCurrent"/>. 
+    '''     <para>
     '''     A token is a string of characters that represent a valid R element, plus meta data about
     '''     the token type (identifier, operator, keyword, bracket etc.).
     '''     </para><para>
@@ -43,8 +60,6 @@ Public Class clsRToken
     '''     to correctly identify if <paramref name="strLexemeCurrent"/> is a unary or binary
     '''     operator.</para>
     ''' </summary>
-    '''
-    ''' <exception cref="Exception">    Thrown when an exception error condition occurs. </exception>
     '''
     ''' <param name="strLexemePrev">    The non-space lexeme immediately to the left of
     '''                                 <paramref name="strLexemeCurrent"/>. </param>
@@ -61,64 +76,64 @@ Public Class clsRToken
 
         strTxt = strLexemeCurrent
 
-        If IsKeyWord(strLexemeCurrent) Then                         'reserved key word (e.g. if, else etc.)
+        If IsKeyWord(strLexemeCurrent) Then                   'reserved key word (e.g. if, else etc.)
             enuToken = clsRToken.typToken.RKeyWord
         ElseIf IsSyntacticName(strLexemeCurrent) Then
             If strLexemeNext = "(" Then
-                enuToken = clsRToken.typToken.RFunctionName  'function name
+                enuToken = clsRToken.typToken.RFunctionName   'function name
             Else
-                enuToken = clsRToken.typToken.RSyntacticName 'syntactic name
+                enuToken = clsRToken.typToken.RSyntacticName  'syntactic name
             End If
-        ElseIf IsComment(strLexemeCurrent) Then                      'comment (starts with '#*')
+        ElseIf IsComment(strLexemeCurrent) Then               'comment (starts with '#*')
             enuToken = clsRToken.typToken.RComment
-        ElseIf IsConstantString(strLexemeCurrent) Then               'string literal (starts with single or double quote)
+        ElseIf IsConstantString(strLexemeCurrent) Then        'string literal (starts with single or double quote)
             enuToken = clsRToken.typToken.RConstantString
-        ElseIf IsNewLine(strLexemeCurrent) Then                      'new line (e.g. '\n')
+        ElseIf IsNewLine(strLexemeCurrent) Then               'new line (e.g. '\n')
             enuToken = clsRToken.typToken.RNewLine
-        ElseIf strLexemeCurrent = ";" Then                           'end statement
+        ElseIf strLexemeCurrent = ";" Then                    'end statement
             enuToken = clsRToken.typToken.REndStatement
-        ElseIf strLexemeCurrent = "," Then                           'parameter separator
+        ElseIf strLexemeCurrent = "," Then                    'parameter separator
             enuToken = clsRToken.typToken.RSeparator
-        ElseIf IsSequenceOfSpaces(strLexemeCurrent) Then             'sequence of spaces (needs to be after separator check, 
-            enuToken = clsRToken.typToken.RSpace        '        else linefeed is recognised as space)
-        ElseIf IsBracket(strLexemeCurrent) Then                      'bracket (e.g. '{')
+        ElseIf IsSequenceOfSpaces(strLexemeCurrent) Then      'sequence of spaces (needs to be after separator check, 
+            enuToken = clsRToken.typToken.RSpace              '    else linefeed is recognised as space)
+        ElseIf IsBracket(strLexemeCurrent) Then               'bracket (e.g. '{')
             If strLexemeCurrent = "}" Then
                 enuToken = clsRToken.typToken.REndScript
             Else
                 enuToken = clsRToken.typToken.RBracket
             End If
-        ElseIf IsOperatorBrackets(strLexemeCurrent) Then             'bracket operator (e.g. '[')
+        ElseIf IsOperatorBrackets(strLexemeCurrent) Then      'bracket operator (e.g. '[')
             enuToken = clsRToken.typToken.ROperatorBracket
-        ElseIf IsOperatorUnary(strLexemeCurrent) AndAlso             'unary right operator (e.g. '!x')
+        ElseIf IsOperatorUnary(strLexemeCurrent) AndAlso      'unary right operator (e.g. '!x')
                 (String.IsNullOrEmpty(strLexemePrev) OrElse
                 Not Regex.IsMatch(strLexemePrev, "[a-zA-Z0-9_\.)\]]$")) Then
             enuToken = clsRToken.typToken.ROperatorUnaryRight
-        ElseIf strLexemeCurrent = "~" AndAlso                        'unary left operator (e.g. x~)
+        ElseIf strLexemeCurrent = "~" AndAlso                 'unary left operator (e.g. x~)
                 (String.IsNullOrEmpty(strLexemeNext) OrElse
                 Not Regex.IsMatch(strLexemeNext, "^[a-zA-Z0-9_\.(\+\-\!~]")) Then
             enuToken = clsRToken.typToken.ROperatorUnaryLeft
-        ElseIf IsOperatorReserved(strLexemeCurrent) OrElse           'binary operator (e.g. '+')
+        ElseIf IsOperatorReserved(strLexemeCurrent) OrElse    'binary operator (e.g. '+')
                 Regex.IsMatch(strLexemeCurrent, "^%.*%$") Then
             enuToken = clsRToken.typToken.ROperatorBinary
         Else
-            Throw New Exception("Cannot build a valid token from lexeme \'" & strLexemeCurrent & "\'.")
+            enuToken = clsRToken.typToken.RInvalid
         End If
 
     End Sub
 
-    Public Sub New()
-
-    End Sub
-
+    '''--------------------------------------------------------------------------------------------
+    ''' <summary>   Creates and returns a clone of this object. </summary>
+    '''
+    ''' <exception cref="Exception">    Thrown when the object has an empty child token. </exception>
+    '''
+    ''' <returns>   A clone of this object. </returns>
+    '''--------------------------------------------------------------------------------------------
     Public Function CloneMe() As clsRToken
-        Dim clsToken = New clsRToken
-        clsToken.strTxt = strTxt
-        clsToken.enuToken = enuToken
+        Dim clsToken = New clsRToken(strTxt, enuToken)
 
         For Each clsTokenChild As clsRToken In lstTokens
             If IsNothing(clsTokenChild) Then
-                'TODO developer error: token child has value nothing
-                Return Nothing
+                Throw New Exception("Token has illegal empty child.")
             End If
             clsToken.lstTokens.Add(clsTokenChild.CloneMe)
         Next
@@ -169,7 +184,6 @@ Public Class clsRToken
         '       then we assume by default, that it's not a valid lexeme
         Return False
     End Function
-
 
     '''--------------------------------------------------------------------------------------------
     ''' <summary>   Returns true if <paramref name="strTxt"/> is a complete or partial 
@@ -365,6 +379,5 @@ Public Class clsRToken
         Dim arrKeyWords() As String = {"if", "else", "repeat", "while", "function", "for", "in", "next", "break"}
         Return arrKeyWords.Contains(strTxt)
     End Function
-
 
 End Class

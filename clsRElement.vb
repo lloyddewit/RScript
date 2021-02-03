@@ -4,10 +4,15 @@
     Public bBracketed As Boolean
     Public clsPresentation As clsRElementPresentation
 
-    Public Sub New(clsToken As clsRToken, Optional bBracketedNew As Boolean = False, Optional clsPresentationNew As clsRElementPresentation = Nothing)
+    Public Sub New(clsToken As clsRToken, Optional bBracketedNew As Boolean = False)
         strTxt = clsToken.strTxt
         bBracketed = bBracketedNew
-        clsPresentation = clsPresentationNew
+        clsPresentation = New clsRElementPresentation
+
+        If clsToken.lstTokens.Count > 0 AndAlso
+                clsToken.lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation Then
+            clsPresentation.strPrefix = clsToken.lstTokens.Item(0).strTxt
+        End If
     End Sub
 
     '''--------------------------------------------------------------------------------------------

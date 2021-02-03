@@ -5,9 +5,8 @@
     Public lstParameters As New List(Of clsRParameter)
 
     Public Sub New(clsToken As clsRToken, Optional bBracketedNew As Boolean = False,
-                   Optional bFirstParamOnRightNew As Boolean = False,
-                   Optional clsPresentationNew As clsRElementPresentation = Nothing)
-        MyBase.New(clsToken, bBracketedNew, clsPresentationNew)
+                   Optional bFirstParamOnRightNew As Boolean = False)
+        MyBase.New(clsToken, bBracketedNew)
         bFirstParamOnRight = bFirstParamOnRightNew
     End Sub
 

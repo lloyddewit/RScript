@@ -8,13 +8,25 @@ Public Class clsRStatement
     ''' </summary>
     Public bTerminateWithNewline As Boolean = True
 
+    ''' <summary>   The assignment operator used in this statement (e.g. '=' in the statement 'a=b').
+    '''             If there is no assignment (e.g. as in 'myFunction(a)' then set to 'nothing'. </summary>
     Public strAssignmentOperator As String
+    ''' <summary>   The element assigned to by the statement (e.g. 'a' in the statement 'a=b').
+    '''             If there is no assignment (e.g. as in 'myFunction(a)' then set to 'nothing'. </summary>
     Public clsAssignment As clsRElement = Nothing
+    ''' <summary>   The element to assigned in the statement (e.g. 'b' in the statement 'a=b').
+    '''             If there is no assignment (e.g. as in 'myFunction(a)' then set to the top-
+    '''             level element in the statement (e.g. 'myFunction'). </summary>
     Public clsElement As clsRElement
 
-    Private strDebug As String = ""
+    Private strDebug As String = "" 'TODO delete when debugging done?
 
+    ''' <summary>   The relative precedence of the R operators. This is a two-dimensional array 
+    '''             because the operators are stored in groups together with operators that 
+    '''             have the same precedence.</summary>
     Private ReadOnly arrOperatorPrecedence(17)() As String
+
+    'Constants for operator precedence groups that have special characteristics (e.g. must be unary)
     Private ReadOnly intOperatorsBrackets As Integer = 2
     Private ReadOnly intOperatorsUnaryOnly As Integer = 4
     Private ReadOnly intOperatorsUserDefined As Integer = 6
@@ -23,14 +35,14 @@ Public Class clsRStatement
     Private ReadOnly intOperatorsLeftAssignment1 As Integer = 15
     Private ReadOnly intOperatorsLeftAssignment2 As Integer = 16
 
-
     '''--------------------------------------------------------------------------------------------
-    ''' <summary>   Constructor.
-    '''             Creates an object representing a valid R statement.
-    '''             processes the tokens from <paramref name="lstTokens"/> from position <paramref name="intPos"/> to the end of statement, end of script or end of list (whichever comes first)
-    '''             TODO </summary>
+    ''' <summary>   Constructor an object representing a valid R statement.
+    '''             <para>
+    '''             Processes the tokens from <paramref name="lstTokens"/> from position <paramref name="intPos"/> 
+    '''             to the end of statement, end of script or end of list (whichever comes first).
+    '''             </para> </summary>
     '''
-    ''' <param name="lstTokens">   The list r tokens. </param>
+    ''' <param name="lstTokens">   The list of R tokens to process </param>
     ''' <param name="intPos">       [in,out] The int position. </param>
     '''--------------------------------------------------------------------------------------------
     Public Sub New(lstTokens As List(Of clsRToken), ByRef intPos As Integer)
@@ -62,7 +74,7 @@ Public Class clsRStatement
         Dim lstStatementTokens As List(Of clsRToken) = New List(Of clsRToken)
         While (intPos < lstTokens.Count)
             lstStatementTokens.Add(lstTokens.Item(intPos))
-            If lstTokens.Item(intPos).enuToken = clsRToken.typToken.REndStatement OrElse 'we don't add this termination condition to the while loop 
+            If lstTokens.Item(intPos).enuToken = clsRToken.typToken.REndStatement OrElse 'we don't add this termination condition to the while statement 
                  lstTokens.Item(intPos).enuToken = clsRToken.typToken.REndScript Then    '    because we also want the token that terminates the statement 
                 intPos += 1                                                              '    to be part of the statement's list of tokens
                 Exit While
@@ -71,7 +83,8 @@ Public Class clsRStatement
         End While
 
         'restructure the list into a token tree
-        Dim lstTokenBrackets As List(Of clsRToken) = GetLstTokenBrackets(lstStatementTokens, 0)
+        Dim lstTokenPresentation As List(Of clsRToken) = GetLstPresentation(lstStatementTokens, 0)
+        Dim lstTokenBrackets As List(Of clsRToken) = GetLstTokenBrackets(lstTokenPresentation, 0)
         Dim lstTokenFunctionBrackets As List(Of clsRToken) = GetLstTokenFunctionBrackets(lstTokenBrackets)
         Dim lstTokenCommas As List(Of clsRToken) = GetLstTokenCommas(lstTokenFunctionBrackets, 0)
         Dim lstTokenTree As List(Of clsRToken) = GetLstTokenOperators(lstTokenCommas)
@@ -112,6 +125,11 @@ Public Class clsRStatement
 
     End Sub
 
+    '''--------------------------------------------------------------------------------------------
+    ''' <summary>   Returns this object as a valid, executable R statement. </summary>
+    '''
+    ''' <returns>   The current state of this object as a valid, executable R statement. </returns>
+    '''--------------------------------------------------------------------------------------------
     Public Function GetAsExecutableScript() As String
         Dim strScript As String
         Dim strElement As String = GetScriptElement(clsElement)
@@ -143,7 +161,8 @@ Public Class clsRStatement
             Return Nothing
         End If
 
-        Dim strScript As String = If(clsElement.bBracketed, "(", "")
+        Dim strScript As String = clsElement.clsPresentation.strPrefix
+        strScript &=  If(clsElement.bBracketed, "(", "")
 
         Select Case clsElement.GetType()
             Case GetType(clsRElementFunction)
@@ -203,8 +222,75 @@ Public Class clsRStatement
     End Function
 
     '''--------------------------------------------------------------------------------------------
-    ''' <summary>   TODO
-    '''             Iterates through the tokens in <paramref name="lstTokens"/>.
+    ''' <summary>   
+    ''' Iterates through the tokens in <paramref name="lstTokens"/> and makes each presentation 
+    ''' element a child of the next non-presentation element. 
+    ''' <para>
+    ''' A presentation element is an element that has no functionality and is only used to make 
+    ''' the script easier to read. It may be a block of spaces, a comment or a newline that does
+    ''' not end a statement.
+    ''' </para><para>
+    ''' For example, the list of tokens representing the following block of script:
+    ''' </para><code>
+    ''' # comment1 <para>
+    ''' a =b # comment2 </para></code><para>
+    ''' </para><para>
+    ''' Will be structured as:</para><code><para>
+    ''' a</para><para>
+    ''' .."# comment1\n"</para><para>
+    ''' =</para><para>
+    ''' .." "</para><para>
+    ''' b</para><para>
+    ''' (endStatement)</para><para>
+    ''' .." # comment2"</para><para>
+    ''' </para></code></summary>
+    ''' 
+    ''' <param name="lstTokens">   The list of tokens to process. </param>
+    '''
+    ''' <returns>   A token tree where presentation information is stored as a child of the next 
+    '''             non-presentation element. </returns>
+    '''--------------------------------------------------------------------------------------------
+    Private Function GetLstPresentation(lstTokens As List(Of clsRToken), intPos As Integer) As List(Of clsRToken)
+        'if nothing to process then return empty list
+        If lstTokens.Count < 1 Then
+            Return New List(Of clsRToken)
+        End If
+
+        Dim lstTokensNew As List(Of clsRToken) = New List(Of clsRToken)
+        Dim clsToken As clsRToken
+        Dim strPrefix As String = ""
+
+        While (intPos < lstTokens.Count)
+            clsToken = lstTokens.Item(intPos)
+            intPos += 1
+            Select Case clsToken.enuToken
+                Case clsRToken.typToken.RSpace, clsRToken.typToken.RComment, clsRToken.typToken.RNewLine
+                    strPrefix &= clsToken.strTxt
+                Case Else
+                    If Not String.IsNullOrEmpty(strPrefix) Then
+                        clsToken.lstTokens.Add(New clsRToken(strPrefix, clsRToken.typToken.RPresentation))
+                    End If
+                    lstTokensNew.Add(clsToken.CloneMe)
+                    strPrefix = ""
+            End Select
+        End While
+
+        'edge case: if there is still presentation information not yet added to a tree element
+        '           (this may happen if the last statement in the script is not terminated 
+        '           with a new line or '}')
+        If Not String.IsNullOrEmpty(strPrefix) Then
+            'add a new end statement token that contains the presentation information
+            clsToken = New clsRToken(vbLf, clsRToken.typToken.REndStatement)
+            clsToken.lstTokens.Add(New clsRToken(strPrefix, clsRToken.typToken.RPresentation))
+            lstTokensNew.Add(clsToken.CloneMe)
+        End If
+
+        Return lstTokensNew
+    End Function
+
+
+    '''--------------------------------------------------------------------------------------------
+    ''' <summary>   Iterates through the tokens in <paramref name="lstTokens"/>.
     '''             If the token is a '(' then it makes everything inside the brackets a child of the '(' token.
     '''             if the '(' belongs to a function then makes the '(' a child of the function
     '''             Brackets may be nested. For example:
@@ -239,12 +325,18 @@ Public Class clsRStatement
             intPos += 1
             Select Case clsToken.strTxt
                 Case "("
-                    clsToken.lstTokens = GetLstTokenBrackets(lstTokens, intPos)
+                    Dim lstTokensTmp As List(Of clsRToken) = GetLstTokenBrackets(lstTokens, intPos)
+                    For Each clsTokenChild As clsRToken In lstTokensTmp
+                        If IsNothing(clsTokenChild) Then
+                            Throw New Exception("Token has illegal empty child.")
+                        End If
+                        clsToken.lstTokens.Add(clsTokenChild.CloneMe)
+                    Next
                 Case ")"
-                    lstTokensNew.Add(clsToken)
+                    lstTokensNew.Add(clsToken.CloneMe)
                     Return lstTokensNew
             End Select
-            lstTokensNew.Add(clsToken)
+            lstTokensNew.Add(clsToken.CloneMe)
         End While
         Return lstTokensNew
     End Function
@@ -280,23 +372,15 @@ Public Class clsRStatement
             clsToken = lstTokens.Item(intPos)
 
             If clsToken.enuToken = clsRToken.typToken.RFunctionName Then
-                'if function name already has children, or next steps will go out of bounds, then throw developer error
-                If clsToken.lstTokens.Count > 0 OrElse
-                        intPos >= lstTokens.Count - 1 OrElse
-                        (lstTokens.Item(intPos + 1).enuToken = clsRToken.typToken.RSpace AndAlso
-                        intPos >= lstTokens.Count - 2) Then
+                'if next steps will go out of bounds, then throw developer error
+                If intPos > lstTokens.Count - 2 Then
                     Throw New Exception("The function's parameters have an unexpected format and cannot be processed.")
                     Exit While
                 End If
-                'make the function's open bracket (and any preceeding spaces) a child of the function name
+                'make the function's open bracket a child of the function name
                 intPos += 1
                 Dim clsTokenNext = lstTokens.Item(intPos)
                 clsToken.lstTokens.Add(clsTokenNext.CloneMe)
-                If clsTokenNext.enuToken = clsRToken.typToken.RSpace Then
-                    intPos += 1
-                    clsTokenNext = lstTokens.Item(intPos)
-                    clsToken.lstTokens.Add(clsTokenNext.CloneMe)
-                End If
             End If
             clsToken.lstTokens = GetLstTokenFunctionBrackets(clsToken.CloneMe.lstTokens)
             lstTokensNew.Add(clsToken.CloneMe)
@@ -339,14 +423,14 @@ Public Class clsRStatement
                         Return lstTokens
                     Else
                         intPos += 1
-                        clsToken.lstTokens = GetLstTokenCommas(lstStatementTokens, intPos, True)
+                        clsToken.lstTokens = clsToken.lstTokens.Concat(GetLstTokenCommas(lstStatementTokens, intPos, True)).ToList()
                     End If
                 Case ")"
                     lstTokens.Add(clsToken)
                     Return lstTokens
                 Case Else
-                    If lstStatementTokens.Item(intPos).lstTokens.Count > 0 Then
-                        clsToken.lstTokens = GetLstTokenCommas(lstStatementTokens.Item(intPos).lstTokens, 0)
+                    If clsToken.lstTokens.Count > 0 Then
+                        clsToken.lstTokens = GetLstTokenCommas(clsToken.CloneMe.lstTokens, 0)
                     End If
             End Select
             lstTokens.Add(clsToken)
@@ -466,20 +550,20 @@ Public Class clsRStatement
                             'make the previous and next tokens, the children of the current token
                             clsToken.lstTokens.Add(clsTokenPrev.CloneMe)
                             bPrevTokenProcessed = True
-                            clsToken.lstTokens.Add(GetNextToken(lstTokens, intPosTokens, intPosOperators))
+                            clsToken.lstTokens.Add(GetNextToken(lstTokens, intPosTokens))
                             intPosTokens += 1
                             'while next token is the same operator (e.g. 'a+b+c+d...'), 
                             '    then keep making the next token, the child of the current operator token
                             Dim clsTokenNext As clsRToken
                             While intPosTokens < lstTokens.Count - 1
-                                clsTokenNext = GetNextToken(lstTokens, intPosTokens, intPosOperators)
+                                clsTokenNext = GetNextToken(lstTokens, intPosTokens)
                                 If Not clsToken.enuToken = clsTokenNext.enuToken OrElse
                                          Not clsToken.strTxt = clsTokenNext.strTxt Then
                                     Exit While
                                 End If
 
                                 intPosTokens += 1
-                                clsToken.lstTokens.Add(GetNextToken(lstTokens, intPosTokens, intPosOperators))
+                                clsToken.lstTokens.Add(GetNextToken(lstTokens, intPosTokens))
                                 intPosTokens += 1
                             End While
                         Case clsRToken.typToken.ROperatorUnaryRight
@@ -489,7 +573,7 @@ Public Class clsRStatement
                                 Exit Select
                             End If
                             'make the next token, the child of the current operator token
-                            clsToken.lstTokens.Add(GetNextToken(lstTokens, intPosTokens, intPosOperators))
+                            clsToken.lstTokens.Add(GetNextToken(lstTokens, intPosTokens))
                             intPosTokens += 1
                         Case clsRToken.typToken.ROperatorUnaryLeft
                             If IsNothing(clsTokenPrev) OrElse Not intPosOperators = intOperatorsTilda Then
@@ -535,19 +619,15 @@ Public Class clsRStatement
     '''
     ''' <param name="lstTokens">        The list of tokens. </param>
     ''' <param name="intPosTokens">     The position of the current token in the list. </param>
-    ''' <param name="intPosOperators">  The group of operators currenty being processed. </param>
     '''
     ''' <returns>   The next token. </returns>
     '''--------------------------------------------------------------------------------------------
-    Private Function GetNextToken(lstTokens As List(Of clsRToken), intPosTokens As Integer, intPosOperators As Integer) As clsRToken
+    Private Function GetNextToken(lstTokens As List(Of clsRToken), intPosTokens As Integer) As clsRToken
 
         If intPosTokens >= (lstTokens.Count - 1) Then
             Throw New Exception("Token list ended unexpectedly.")
         End If
-
-        'process the next token's children
         Dim clsTokenNext As clsRToken = lstTokens.Item(intPosTokens + 1).CloneMe
-        'clsTokenNext.lstTokens = GetLstTokenOperatorGroup(clsTokenNext.CloneMe.lstTokens, intPosOperators) 'TODO is this needed?
         Return clsTokenNext
     End Function
 
@@ -555,7 +635,7 @@ Public Class clsRStatement
         If IsNothing(clsToken) Then
             Return Nothing
         End If
-
+        'TODO continue from here
         Select Case clsToken.enuToken
             Case clsRToken.typToken.RBracket
                 'if text is a round bracket, then return the bracket's child
