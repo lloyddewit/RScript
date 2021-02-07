@@ -162,18 +162,18 @@ Public Class clsRStatement
         End If
 
         Dim strScript As String = clsElement.clsPresentation.strPrefix
-        strScript &=  If(clsElement.bBracketed, "(", "")
+        strScript &= If(clsElement.bBracketed, "(", "") 'TODO also store presentation info for open and close brackets?
 
         Select Case clsElement.GetType()
             Case GetType(clsRElementFunction)
                 strScript &= GetScriptElementProperty(clsElement)
-                strScript &= "("
+                strScript &= "(" 'TODO also store presentation info for function brackets, commas and equals?
                 If Not IsNothing(clsElement.lstParameters) Then
                     Dim bPrefixComma As Boolean = False
                     For Each clsRParameter In clsElement.lstParameters
                         strScript &= If(bPrefixComma, ",", "")
                         bPrefixComma = True
-                        strScript &= If(String.IsNullOrEmpty(clsRParameter.strArgumentName), "", clsRParameter.strArgumentName + "=")
+                        strScript &= If(String.IsNullOrEmpty(clsRParameter.strArgumentName), "", clsRParameter.clsPresentation.strPrefix & clsRParameter.strArgumentName + "=")
                         strScript &= GetScriptElement(clsRParameter.clsArgValue)
                     Next
                 End If
@@ -282,7 +282,7 @@ Public Class clsRStatement
             'add a new end statement token that contains the presentation information
             clsToken = New clsRToken(vbLf, clsRToken.typToken.REndStatement)
             clsToken.lstTokens.Add(New clsRToken(strPrefix, clsRToken.typToken.RPresentation))
-            lstTokensNew.Add(clsToken.CloneMe)
+            lstTokensNew.Add(clsToken)
         End If
 
         Return lstTokensNew
@@ -531,17 +531,19 @@ Public Class clsRStatement
                         End If
                     ElseIf Not arrOperatorPrecedence(intPosOperators).Contains(clsToken.strTxt) Then
                         Exit Select
+                        'edge case: if the operator already has (non-presentation) children then it means that it has already been processed.
+                        '    This happens when the child is in the same precedence group as the parent but was processed first 
+                        '    in accordance with the left to right rule (e.g. 'a/b*c').
+                    ElseIf clsToken.lstTokens.Count > 1 OrElse
+                            (clsToken.lstTokens.Count > 0 AndAlso
+                            Not clsToken.lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation) Then
+                        Exit Select
                     End If
                     Select Case clsToken.enuToken
                         Case clsRToken.typToken.ROperatorBinary
                             'edge case: if we are looking for unary '+' or '-' and we found a binary '+' or '-'
                             If intPosOperators = intOperatorsUnaryOnly Then
                                 'do not process (binary '+' and '-' have a lower precedence and will be processed later)
-                                Exit Select
-                                'edge case: if the operator already has children then it means that it has already been processed.
-                                '    This happens when the child is in the same precedence group as the parent but was processed first 
-                                '    in accordance with the left to right rule (e.g. 'a/b*c').
-                            ElseIf clsToken.lstTokens.Count > 0 Then
                                 Exit Select
                             ElseIf IsNothing(clsTokenPrev) Then
                                 Throw New Exception("The binary operator has no parameter on its left.")
@@ -558,7 +560,7 @@ Public Class clsRStatement
                             While intPosTokens < lstTokens.Count - 1
                                 clsTokenNext = GetNextToken(lstTokens, intPosTokens)
                                 If Not clsToken.enuToken = clsTokenNext.enuToken OrElse
-                                         Not clsToken.strTxt = clsTokenNext.strTxt Then
+                                        Not clsToken.strTxt = clsTokenNext.strTxt Then
                                     Exit While
                                 End If
 
@@ -569,7 +571,7 @@ Public Class clsRStatement
                         Case clsRToken.typToken.ROperatorUnaryRight
                             'edge case: if we found a unary '+' or '-', but we are not currently processing the unary '+'and '-' operators
                             If arrOperatorPrecedence(intOperatorsUnaryOnly).Contains(clsToken.strTxt) AndAlso
-                                Not intPosOperators = intOperatorsUnaryOnly Then
+                                    Not intPosOperators = intOperatorsUnaryOnly Then
                                 Exit Select
                             End If
                             'make the next token, the child of the current operator token
@@ -631,16 +633,24 @@ Public Class clsRStatement
         Return clsTokenNext
     End Function
 
-    Private Function GetRElement(clsToken As clsRToken, Optional bBracketedNew As Boolean = False, Optional strPackageName As String = "", Optional lstObjects As List(Of clsRElement) = Nothing) As clsRElement
+    Private Function GetRElement(clsToken As clsRToken,
+                                 Optional bBracketedNew As Boolean = False,
+                                 Optional strPackageName As String = "",
+                                 Optional lstObjects As List(Of clsRElement) = Nothing) As clsRElement
         If IsNothing(clsToken) Then
             Return Nothing
         End If
-        'TODO continue from here
+
         Select Case clsToken.enuToken
             Case clsRToken.typToken.RBracket
                 'if text is a round bracket, then return the bracket's child
                 If clsToken.strTxt = "(" Then
-                    Return GetRElement(clsToken.lstTokens.Item(0), True)
+                    'an open bracket must have at least one child
+                    If clsToken.lstTokens.Count < 1 OrElse clsToken.lstTokens.Count > 2 Then
+                        Throw New Exception("Open bracket token has " & clsToken.lstTokens.Count &
+                                            " children. An open bracket must have exactly one child (plus an Optional presentation child).")
+                    End If
+                    Return GetRElement(clsToken.lstTokens.Item(GetChildPosNonPresentation(clsToken)), True)
                 End If
 
                 Return New clsRElement(clsToken)
@@ -662,9 +672,14 @@ Public Class clsRStatement
                 '    ........)    
                 '    
                 If clsToken.lstTokens.Count > 0 Then
+                    If clsToken.lstTokens.Count > 2 Then
+                        Throw New Exception("Function token has " & clsToken.lstTokens.Count &
+                                            " children. A function token may have 0 or 1 children (plus an Optional presentation child).")
+                    End If
+
                     'process each parameter
                     Dim bFirstParam As Boolean = True
-                    For Each clsTokenParam In clsToken.lstTokens.Item(0).lstTokens
+                    For Each clsTokenParam In clsToken.lstTokens.Item(clsToken.lstTokens.Count - 1).lstTokens
                         Dim clsParameter As clsRParameterNamed = GetRParameterNamed(clsTokenParam)
                         If Not IsNothing(clsParameter) Then
                             If bFirstParam AndAlso IsNothing(clsParameter.clsArgValue) Then
@@ -678,25 +693,27 @@ Public Class clsRStatement
                 Return clsFunction
 
             Case clsRToken.typToken.ROperatorUnaryLeft
-                Dim clsOperator As New clsRElementOperator(clsToken, bBracketedNew)
-                If clsToken.lstTokens.Count < 1 Then
-                    Throw New Exception("The unary left operator must have at least one parameter.")
+                If clsToken.lstTokens.Count < 1 OrElse clsToken.lstTokens.Count > 2 Then
+                    Throw New Exception("Unary left operator token has " & clsToken.lstTokens.Count &
+                                            " children. A Unary left operator must have 1 child (plus an Optional presentation child).")
                 End If
-                clsOperator.lstParameters.Add(GetRParameter(clsToken.lstTokens.Item(0)))
+                Dim clsOperator As New clsRElementOperator(clsToken, bBracketedNew)
+                clsOperator.lstParameters.Add(GetRParameter(clsToken.lstTokens.Item(clsToken.lstTokens.Count - 1)))
                 Return clsOperator
 
             Case clsRToken.typToken.ROperatorUnaryRight
-                Dim clsOperator As New clsRElementOperator(clsToken, bBracketedNew, True)
-                If clsToken.lstTokens.Count < 1 Then
-                    Throw New Exception("The unary right operator must have at least one parameter.")
+                If clsToken.lstTokens.Count < 1 OrElse clsToken.lstTokens.Count > 2 Then
+                    Throw New Exception("Unary right operator token has " & clsToken.lstTokens.Count &
+                                            " children. A Unary right operator must have 1 child (plus an Optional presentation child).")
                 End If
-                clsOperator.lstParameters.Add(GetRParameter(clsToken.lstTokens.Item(0)))
+                Dim clsOperator As New clsRElementOperator(clsToken, bBracketedNew, True)
+                clsOperator.lstParameters.Add(GetRParameter(clsToken.lstTokens.Item(clsToken.lstTokens.Count - 1)))
                 Return clsOperator
 
             Case clsRToken.typToken.ROperatorBinary
                 If clsToken.lstTokens.Count < 2 Then
-                    Throw New Exception("The binary operator must have at least 2 parameters.")
-                    Return Nothing
+                    Throw New Exception("Binary operator token has " & clsToken.lstTokens.Count &
+                                            " children. A binary operator must have at least 2 children (plus an Optional presentation child).")
                 End If
 
                 'if object operator
@@ -706,16 +723,18 @@ Public Class clsRStatement
                         Dim lstObjectsNew As New List(Of clsRElement)
 
                         'add each object parameter to the object list (except last parameter)
-                        For intPos As Integer = 0 To clsToken.lstTokens.Count - 2
+                        Dim startPos As Integer = If(clsToken.lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation, 1, 0)
+                        For intPos As Integer = startPos To clsToken.lstTokens.Count - 2
                             'if the first parameter is a package operator ('::'), then make this the package name for the returned element
-                            If intPos = 0 AndAlso
+                            If intPos = startPos AndAlso
                                     clsToken.lstTokens.Item(intPos).enuToken = clsRToken.typToken.ROperatorBinary AndAlso
                                     clsToken.lstTokens.Item(intPos).strTxt = "::" Then
                                 If clsToken.lstTokens.Item(intPos).lstTokens.Count < 2 Then
-                                    Throw New Exception("The package operator ('::') should have at least 2 parameters.")
+                                    Throw New Exception("Package operator token has " & clsToken.lstTokens.Item(intPos).lstTokens.Count &
+                                                                " children. Package operator must have at least 2 children (plus an Optional presentation child).")
                                 End If
-                                strPackageNameNew = clsToken.lstTokens.Item(intPos).lstTokens.Item(0).strTxt
-                                lstObjectsNew.Add(GetRElement(clsToken.lstTokens.Item(intPos).lstTokens.Item(1)))
+                                strPackageNameNew = clsToken.lstTokens.Item(intPos).lstTokens.Item(clsToken.lstTokens.Item(intPos).lstTokens.Count - 2).strTxt
+                                lstObjectsNew.Add(GetRElement(clsToken.lstTokens.Item(intPos).lstTokens.Item(clsToken.lstTokens.Item(intPos).lstTokens.Count - 1)))
                                 Continue For
                             End If
                             lstObjectsNew.Add(GetRElement(clsToken.lstTokens.Item(intPos)))
@@ -724,11 +743,12 @@ Public Class clsRStatement
                         'the last item in the parameter list is the element we need to return
                         Return GetRElement(clsToken.lstTokens.Item(clsToken.lstTokens.Count - 1), bBracketedNew, strPackageNameNew, lstObjectsNew)
                     Case "::"
-                        'the '::' operator has two parameters, the first is the pacakage name, the second contains the element we need to return
-                        Return GetRElement(clsToken.lstTokens.Item(1), bBracketedNew, clsToken.lstTokens.Item(0).strTxt)
+                        'the '::' operator has two parameters, the first is the package name, the second contains the element we need to return
+                        Return GetRElement(clsToken.lstTokens.Item(clsToken.lstTokens.Count - 1), bBracketedNew, clsToken.lstTokens.Item(clsToken.lstTokens.Count - 2).strTxt)
                     Case Else 'else if not an object or package operator, then add each parameter to the operator
                         Dim clsOperator As New clsRElementOperator(clsToken, bBracketedNew)
-                        For intPos As Integer = 0 To clsToken.lstTokens.Count - 1
+                        Dim startPos As Integer = If(clsToken.lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation, 1, 0)
+                        For intPos As Integer = startPos To clsToken.lstTokens.Count - 1
                             clsOperator.lstParameters.Add(GetRParameter(clsToken.lstTokens.Item(intPos)))
                         Next
                         Return clsOperator
@@ -758,6 +778,8 @@ Public Class clsRStatement
                 End If
                 'else just return a regular element
                 Return New clsRElement(clsToken, bBracketedNew)
+            Case clsRToken.typToken.RPresentation
+                'presentation tokens should already have been processed by their parent token, so we can ignore
             Case Else
                 Throw New Exception("The token has an unexpected type.")
         End Select
@@ -771,28 +793,40 @@ Public Class clsRStatement
 
         Select Case clsToken.strTxt
             Case "="
-                If clsToken.lstTokens.Count = 2 Then
-                    Dim clsParameterNamed As New clsRParameterNamed With {
-                    .strArgumentName = clsToken.lstTokens.Item(0).strTxt}
-                    clsParameterNamed.clsArgValue = GetRElement(clsToken.lstTokens.Item(1))
-                    Return clsParameterNamed
-                Else
-                    Throw New Exception("A function parameter with an '=' must always have an argument name and argument value.")
+                If clsToken.lstTokens.Count < 2 Then
+                    Throw New Exception("Named parameter token has " & clsToken.lstTokens.Count &
+                                        " children. Named parameter must have at least 2 children (plus an Optional presentation child).")
                 End If
+
+                Dim clsParameterNamed As New clsRParameterNamed With {
+                    .strArgumentName = clsToken.lstTokens.Item(clsToken.lstTokens.Count - 2).strTxt}
+                clsParameterNamed.clsArgValue = GetRElement(clsToken.lstTokens.Item(clsToken.lstTokens.Count - 1))
+                clsParameterNamed.clsPresentation.strPrefix = If(clsToken.lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation, clsToken.lstTokens.Item(0).strTxt, "")
+                Return clsParameterNamed
             Case ","
+                ''if ',' is followed by a parameter name or value (e.g. 'fn(a,b)'), then return the parameter
+                'If clsToken.lstTokens.Count > 0 AndAlso Not clsToken.lstTokens.Item(clsToken.lstTokens.Count - 1).strTxt = ")" Then
+                '    Return GetRParameterNamed(clsToken.lstTokens.Item(GetChildPosNonPresentation(clsToken)))
+                'Else 'else return empty parameter (e.g. for cases like 'fn(a,)')
+                '    Return (New clsRParameterNamed)
+                'End If
                 'if ',' is followed by a parameter name or value (e.g. 'fn(a,b)'), then return the parameter
-                If clsToken.lstTokens.Count > 0 AndAlso Not clsToken.lstTokens.Item(0).strTxt = ")" Then
-                    Return GetRParameterNamed(clsToken.lstTokens.Item(0))
-                Else 'else return empty parameter (e.g. for cases like 'fn(a,)')
+                Try
+                    'throws exception if nonpresentation child not found
+                    Return GetRParameterNamed(clsToken.lstTokens.Item(GetChildPosNonPresentation(clsToken)))
+                Catch ex As Exception
+                    'return empty parameter (e.g. for cases like 'fn(a,)')
                     Return (New clsRParameterNamed)
-                End If
+                End Try
             Case "("
                 If clsToken.lstTokens.Count < 1 Then
-                    Throw New Exception("A '(' must have at least one child.")
+                    Throw New Exception("Named parameter bracket token has " & clsToken.lstTokens.Count &
+                                        " children. Named parameter must have at least 1 child (plus an Optional presentation child).")
                 End If
                 Dim clsParameterNamed As New clsRParameterNamed With {
-                    .clsArgValue = GetRElement(clsToken.lstTokens.Item(0), True)
+                    .clsArgValue = GetRElement(clsToken.lstTokens.Item(GetChildPosNonPresentation(clsToken)), True)
                 }
+                clsParameterNamed.clsPresentation.strPrefix = If(clsToken.lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation, clsToken.lstTokens.Item(0).strTxt, "")
                 Return clsParameterNamed
             Case ")"
                 Return Nothing
@@ -800,15 +834,28 @@ Public Class clsRStatement
                 Dim clsParameterNamed As New clsRParameterNamed With {
                     .clsArgValue = GetRElement(clsToken)
                 }
+                clsParameterNamed.clsPresentation.strPrefix = If(clsToken.lstTokens.Count > 0 AndAlso clsToken.lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation, clsToken.lstTokens.Item(0).strTxt, "")
                 Return clsParameterNamed
         End Select
+    End Function
+
+    Private Function GetChildPosNonPresentation(clsToken As clsRToken) As Integer
+        For intPos As Integer = 0 To clsToken.lstTokens.Count - 1
+            If Not clsToken.lstTokens.Item(intPos).enuToken = clsRToken.typToken.RPresentation AndAlso
+                    Not (clsToken.lstTokens.Item(intPos).enuToken = clsRToken.typToken.RBracket AndAlso clsToken.lstTokens.Item(intPos).strTxt = ")") Then
+                Return intPos
+            End If
+        Next
+        Throw New Exception("Token must contain at least one non-presentation child.")
     End Function
 
     Private Function GetRParameter(clsToken As clsRToken) As clsRParameter
         If IsNothing(clsToken) Then
             Throw New ArgumentException("Cannot create a parameter from an empty token.")
         End If
-        Return New clsRParameter With {.clsArgValue = GetRElement(clsToken)}
+        Dim clsParameter As clsRParameter = New clsRParameter With {.clsArgValue = GetRElement(clsToken)}
+        clsParameter.clsPresentation.strPrefix = If(clsToken.lstTokens.Count > 0 AndAlso clsToken.lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation, clsToken.lstTokens.Item(0).strTxt, "")
+        Return clsParameter
     End Function
 
     Private Function GetLstTokensAsString(lstTokens As List(Of clsRToken), Optional strIndent As String = "") As String

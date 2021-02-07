@@ -24,6 +24,13 @@
 '       e.g. don't treat variables as text but store object they represent (e.g. value or function definition)
 '       RSyntax already does this
 ' - allow named operator params (R-Insta allows operator params to be named, but this infor is lost in script)
+'
+' 07/02/21
+' - handle complex assignments (examples from https://cran.r-project.org/doc/manuals/r-release/R-lang.html)
+'   class(x) <- "foo"
+'   x[3:5] <- 13:15
+'   names(x) <- c("a","b")
+'   names(x)[3] <- "Three"
 
 Public Class clsRScript
 

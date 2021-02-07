@@ -1,6 +1,6 @@
 ﻿Public Class clsRParameter
     Public clsArgValue As clsRElement
-    Public clsPresentation As clsRElementPresentation
+    Public clsPresentation As clsRElementPresentation = New clsRElementPresentation
 
     '''--------------------------------------------------------------------------------------------
     ''' <summary>   TODO. </summary>
