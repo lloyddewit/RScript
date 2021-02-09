@@ -1,5 +1,5 @@
 ﻿Public Class clsRElementProperty
-    Inherits clsRElement
+    Inherits clsRElementAssignable
 
     Public strPackageName As String = "" 'only used for functions and variables (e.g. 'constants::syms$h')
     Public lstObjects As New List(Of clsRElement) 'only used for functions and variables (e.g. 'constants::syms$h')
@@ -7,7 +7,7 @@
     Public Sub New(clsToken As clsRToken, Optional bBracketedNew As Boolean = False,
                    Optional strPackageNameNew As String = "",
                    Optional lstObjectsNew As List(Of clsRElement) = Nothing)
-        MyBase.New(clsToken, bBracketedNew)
+        MyBase.New(clsToken, Nothing, bBracketedNew)
         strPackageName = strPackageNameNew
         lstObjects = lstObjectsNew
     End Sub

@@ -71,8 +71,21 @@ Public Class clsRScript
         Dim lstTokens As List(Of clsRToken) = GetLstTokens(lstLexemes)
 
         Dim intPos As Integer = 0
+        Dim dctAssignments As New Dictionary(Of String, clsRStatement)
         While (intPos < lstTokens.Count)
-            lstRStatements.Add(New clsRStatement(lstTokens, intPos))
+            Dim clsStatement As clsRStatement = New clsRStatement(lstTokens, intPos, dctAssignments)
+            lstRStatements.Add(clsStatement)
+
+            'if the value of an assigned element is new/updated
+            If Not IsNothing(clsStatement.clsAssignment) Then
+                'store the updated/new definition in the dictionary
+                If dctAssignments.ContainsKey(clsStatement.clsAssignment.strTxt) Then
+                    dctAssignments(clsStatement.clsAssignment.strTxt) = clsStatement
+                Else
+                    dctAssignments.Add(clsStatement.clsAssignment.strTxt, clsStatement)
+                End If
+            End If
+
         End While
     End Sub
 
