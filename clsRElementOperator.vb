@@ -1,12 +1,12 @@
 ﻿Public Class clsRElementOperator
-    Inherits clsRElement
+    Inherits clsRElementAssignable
     Public bFirstParamOnRight As Boolean = False
     Public strTerminator As String = "" 'only used for '[' and '[[' operators
     Public lstParameters As New List(Of clsRParameter)
 
     Public Sub New(clsToken As clsRToken, Optional bBracketedNew As Boolean = False,
                    Optional bFirstParamOnRightNew As Boolean = False)
-        MyBase.New(clsToken, bBracketedNew)
+        MyBase.New(clsToken, Nothing, bBracketedNew)
         bFirstParamOnRight = bFirstParamOnRightNew
     End Sub
 

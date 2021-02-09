@@ -81,6 +81,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="clsRElement.vb" />
+    <Compile Include="clsRElementAssignable.vb" />
     <Compile Include="clsRElementFunction.vb" />
     <Compile Include="clsRElementKeyWord.vb" />
     <Compile Include="clsRElementOperator.vb" />
