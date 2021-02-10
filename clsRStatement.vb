@@ -674,7 +674,7 @@ Public Class clsRStatement
                 '    ........d
                 '    ........)    
                 '    
-                If clsToken.lstTokens.Count > 0 Then
+                If clsToken.lstTokens.Count > 0 Then 'TODO will a function token always have at least 1 child (the open bracket)?
                     If clsToken.lstTokens.Count > 2 Then
                         Throw New Exception("Function token has " & clsToken.lstTokens.Count &
                                             " children. A function token may have 0 or 1 children (plus an Optional presentation child).")
@@ -683,6 +683,14 @@ Public Class clsRStatement
                     'process each parameter
                     Dim bFirstParam As Boolean = True
                     For Each clsTokenParam In clsToken.lstTokens.Item(clsToken.lstTokens.Count - 1).lstTokens
+                        'if list item is a presentation element, then ignore it
+                        If clsTokenParam.enuToken = clsRToken.typToken.RPresentation Then
+                            If bFirstParam Then
+                                Continue For
+                            End If
+                            Throw New Exception("Function parameter list contained an unexpected presentation element.")
+                        End If
+
                         Dim clsParameter As clsRParameterNamed = GetRParameterNamed(clsTokenParam, dctAssignments)
                         If Not IsNothing(clsParameter) Then
                             If bFirstParam AndAlso IsNothing(clsParameter.clsArgValue) Then
@@ -791,6 +799,7 @@ Public Class clsRStatement
                 Return New clsRElement(clsToken, bBracketedNew)
             Case clsRToken.typToken.RPresentation
                 'presentation tokens should already have been processed by their parent token, so we can ignore
+                Return Nothing
             Case Else
                 Throw New Exception("The token has an unexpected type.")
         End Select
@@ -812,7 +821,10 @@ Public Class clsRStatement
                 Dim clsParameterNamed As New clsRParameterNamed With {
                     .strArgumentName = clsToken.lstTokens.Item(clsToken.lstTokens.Count - 2).strTxt}
                 clsParameterNamed.clsArgValue = GetRElement(clsToken.lstTokens.Item(clsToken.lstTokens.Count - 1), dctAssignments)
-                clsParameterNamed.clsPresentation.strPrefix = If(clsToken.lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation, clsToken.lstTokens.Item(0).strTxt, "")
+                clsParameterNamed.clsPresentation.strPrefix =
+                        If(clsToken.lstTokens.Item(0).lstTokens.Count > 0 AndAlso
+                                clsToken.lstTokens.Item(0).lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation,
+                                clsToken.lstTokens.Item(0).lstTokens.Item(0).strTxt, "")
                 Return clsParameterNamed
             Case ","
                 ''if ',' is followed by a parameter name or value (e.g. 'fn(a,b)'), then return the parameter
