@@ -8,8 +8,11 @@
     ''' b=a</para></code></summary>
     Public clsStatement As clsRStatement
 
-    Public Sub New(clsToken As clsRToken, Optional clsStatementNew As clsRStatement = Nothing, Optional bBracketedNew As Boolean = False)
-        MyBase.New(clsToken, bBracketedNew)
+    Public Sub New(clsToken As clsRToken,
+                   Optional clsStatementNew As clsRStatement = Nothing,
+                   Optional bBracketedNew As Boolean = False,
+                   Optional strPackagePrefix As String = "")
+        MyBase.New(clsToken, bBracketedNew, strPackagePrefix)
         clsStatement = clsStatementNew
     End Sub
 

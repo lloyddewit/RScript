@@ -4,15 +4,17 @@
     Public bBracketed As Boolean
     Public clsPresentation As clsRElementPresentation
 
-    Public Sub New(clsToken As clsRToken, Optional bBracketedNew As Boolean = False)
+    Public Sub New(clsToken As clsRToken,
+                   Optional bBracketedNew As Boolean = False,
+                   Optional strPackagePrefix As String = "")
         strTxt = clsToken.strTxt
         bBracketed = bBracketedNew
-        clsPresentation = New clsRElementPresentation
-
-        If clsToken.lstTokens.Count > 0 AndAlso
-                clsToken.lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation Then
-            clsPresentation.strPrefix = clsToken.lstTokens.Item(0).strTxt
-        End If
+        clsPresentation = New clsRElementPresentation With {
+            .strPrefix = strPackagePrefix &
+                         If(clsToken.lstTokens.Count > 0 AndAlso
+                            clsToken.lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation,
+                            clsToken.lstTokens.Item(0).strTxt, "")
+        }
     End Sub
 
     '''--------------------------------------------------------------------------------------------

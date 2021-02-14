@@ -12,6 +12,8 @@ Public Class clsRStatement
     '''             If there is no assignment (e.g. as in 'myFunction(a)' then set to 'nothing'. </summary>
     Public strAssignmentOperator As String
 
+    Public strAssignmentPrefix As String
+
     ''' <summary>   The element assigned to by the statement (e.g. 'a' in the statement 'a=b').
     '''             If there is no assignment (e.g. as in 'myFunction(a)' then set to 'nothing'. </summary>
     Public clsAssignment As clsRElement = Nothing
@@ -97,25 +99,31 @@ Public Class clsRStatement
             Throw New Exception("The token tree must contain at least one token.")
         End If
 
-        'if the statement includes an assignment, construct assignment element
+        'if the statement includes an assignment, then construct the assignment element
         If lstTokenTree.Item(0).enuToken = clsRToken.typToken.ROperatorBinary AndAlso
-                lstTokenTree.Item(0).lstTokens.Count >= 2 Then
+                lstTokenTree.Item(0).lstTokens.Count > 1 Then
+
+            Dim clsTokenChildLeft As clsRToken = lstTokenTree.Item(0).lstTokens.Item(lstTokenTree.Item(0).lstTokens.Count - 2)
+            Dim clsTokenChildRight As clsRToken = lstTokenTree.Item(0).lstTokens.Item(lstTokenTree.Item(0).lstTokens.Count - 1)
+
             'if the statement has a left assignment (e.g. 'x<-value', 'x<<-value' or 'x=value')
             If arrOperatorPrecedence(intOperatorsLeftAssignment1).Contains(lstTokenTree.Item(0).strTxt) OrElse
                 arrOperatorPrecedence(intOperatorsLeftAssignment2).Contains(lstTokenTree.Item(0).strTxt) Then
-                strAssignmentOperator = lstTokenTree.Item(0).strTxt
-                clsAssignment = GetRElement(lstTokenTree.Item(0).lstTokens.Item(0), dctAssignments)
-                clsElement = GetRElement(lstTokenTree.Item(0).lstTokens.Item(1), dctAssignments)
+                clsAssignment = GetRElement(clsTokenChildLeft, dctAssignments)
+                clsElement = GetRElement(clsTokenChildRight, dctAssignments)
             ElseIf arrOperatorPrecedence(intOperatorsRightAssignment).Contains(lstTokenTree.Item(0).strTxt) Then
                 'else if the statement has a right assignment (e.g. 'value->x' or 'value->>x')
-                strAssignmentOperator = lstTokenTree.Item(0).strTxt
-                clsAssignment = GetRElement(lstTokenTree.Item(0).lstTokens.Item(1), dctAssignments)
-                clsElement = GetRElement(lstTokenTree.Item(0).lstTokens.Item(0), dctAssignments)
+                clsAssignment = GetRElement(clsTokenChildRight, dctAssignments)
+                clsElement = GetRElement(clsTokenChildLeft, dctAssignments)
             End If
         End If
 
-        'if there's no assignment, then build the main element from the token tree's top element
-        If IsNothing(clsAssignment) Then
+        'if there was an assigment then set the assignment operator and its presentation information
+        If Not IsNothing(clsAssignment) Then
+            strAssignmentOperator = lstTokenTree.Item(0).strTxt
+            strAssignmentPrefix = If(lstTokenTree.Item(0).lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation,
+                                     lstTokenTree.Item(0).lstTokens.Item(0).strTxt, "")
+        Else 'if there was no assignment, then build the main element from the token tree's top element
             clsElement = GetRElement(lstTokenTree.Item(0), dctAssignments)
         End If
 
@@ -143,10 +151,10 @@ Public Class clsRStatement
             'if the statement has a left assignment (e.g. 'x<-value', 'x<<-value' or 'x=value')
             If arrOperatorPrecedence(intOperatorsLeftAssignment1).Contains(strAssignmentOperator) OrElse
                 arrOperatorPrecedence(intOperatorsLeftAssignment2).Contains(strAssignmentOperator) Then
-                strScript = strAssigment & strAssignmentOperator & strElement
+                strScript = strAssigment & strAssignmentPrefix & strAssignmentOperator & strElement
             ElseIf arrOperatorPrecedence(intOperatorsRightAssignment).Contains(strAssignmentOperator) Then
                 'else if the statement has a right assignment (e.g. 'value->x' or 'value->>x')
-                strScript = strElement & strAssignmentOperator & strAssigment
+                strScript = strElement & strAssignmentPrefix & strAssignmentOperator & strAssigment
             Else
                 Throw New Exception("The statement's assignment operator is an unknown type.")
                 Return Nothing
@@ -163,7 +171,7 @@ Public Class clsRStatement
             Return Nothing
         End If
 
-        Dim strScript As String = clsElement.clsPresentation.strPrefix
+        Dim strScript As String = ""
         strScript &= If(clsElement.bBracketed, "(", "") 'TODO also store presentation info for open and close brackets?
 
         Select Case clsElement.GetType()
@@ -185,21 +193,21 @@ Public Class clsRStatement
             Case GetType(clsRElementOperator)
                 Dim bPrefixOperator As Boolean = clsElement.bFirstParamOnRight
                 For Each clsRParameter In clsElement.lstParameters
-                    strScript &= If(bPrefixOperator, clsElement.strTxt, "")
+                    strScript &= If(bPrefixOperator, clsElement.clsPresentation.strPrefix & clsElement.strTxt, "")
                     bPrefixOperator = True
                     strScript &= GetScriptElement(clsRParameter.clsArgValue)
                 Next
                 strScript &= If(clsElement.lstParameters.Count = 1 AndAlso Not clsElement.bFirstParamOnRight, clsElement.strTxt, "")
             Case GetType(clsRElementKeyWord) 'TODO
             Case GetType(clsRElement), GetType(clsRElementAssignable)
-                strScript &= clsElement.strTxt
+                strScript &= clsElement.clsPresentation.strPrefix & clsElement.strTxt
         End Select
         strScript &= If(clsElement.bBracketed, ")", "")
         Return strScript
     End Function
 
     Private Function GetScriptElementProperty(clsElement As clsRElementProperty) As String
-        Dim strScript As String = If(String.IsNullOrEmpty(clsElement.strPackageName), "", clsElement.strPackageName + "::")
+        Dim strScript As String = clsElement.clsPresentation.strPrefix & If(String.IsNullOrEmpty(clsElement.strPackageName), "", clsElement.strPackageName & "::")
         If Not IsNothing(clsElement.lstObjects) AndAlso clsElement.lstObjects.Count > 0 Then
             For Each clsObject In clsElement.lstObjects
                 strScript &= GetScriptElement(clsObject)
@@ -639,6 +647,7 @@ Public Class clsRStatement
                                  dctAssignments As Dictionary(Of String, clsRStatement),
                                  Optional bBracketedNew As Boolean = False,
                                  Optional strPackageName As String = "",
+                                 Optional strPackagePrefix As String = "",
                                  Optional lstObjects As List(Of clsRElement) = Nothing) As clsRElement
         If IsNothing(clsToken) Then
             Return Nothing
@@ -649,9 +658,10 @@ Public Class clsRStatement
                 'if text is a round bracket, then return the bracket's child
                 If clsToken.strTxt = "(" Then
                     'an open bracket must have at least one child
-                    If clsToken.lstTokens.Count < 1 OrElse clsToken.lstTokens.Count > 2 Then
+                    If clsToken.lstTokens.Count < 1 OrElse clsToken.lstTokens.Count > 3 Then
                         Throw New Exception("Open bracket token has " & clsToken.lstTokens.Count &
-                                            " children. An open bracket must have exactly one child (plus an Optional presentation child).")
+                                " children. An open bracket must have exactly one child (plus an " &
+                                "optional presentation child and/or an optional close bracket).")
                     End If
                     Return GetRElement(clsToken.lstTokens.Item(GetChildPosNonPresentation(clsToken)), dctAssignments, True)
                 End If
@@ -659,7 +669,7 @@ Public Class clsRStatement
                 Return New clsRElement(clsToken)
 
             Case clsRToken.typToken.RFunctionName 'TODO allow functions and operators to be assignable?
-                Dim clsFunction As New clsRElementFunction(clsToken, bBracketedNew, strPackageName, lstObjects)
+                Dim clsFunction As New clsRElementFunction(clsToken, bBracketedNew, strPackageName, strPackagePrefix, lstObjects)
                 'if function has at least one parameter
                 'Note: Function tokens are structured as a tree.
                 '      For example 'f(a,b,c=d)' is structured as:
@@ -677,7 +687,7 @@ Public Class clsRStatement
                 If clsToken.lstTokens.Count > 0 Then 'TODO will a function token always have at least 1 child (the open bracket)?
                     If clsToken.lstTokens.Count > 2 Then
                         Throw New Exception("Function token has " & clsToken.lstTokens.Count &
-                                            " children. A function token may have 0 or 1 children (plus an Optional presentation child).")
+                                            " children. A function token may have 0 Or 1 children (plus an Optional presentation child).")
                     End If
 
                     'process each parameter
@@ -730,32 +740,49 @@ Public Class clsRStatement
                 'if object operator
                 Select Case clsToken.strTxt
                     Case "$"
+                        Dim strPackagePrefixNew As String = ""
                         Dim strPackageNameNew As String = ""
                         Dim lstObjectsNew As New List(Of clsRElement)
 
                         'add each object parameter to the object list (except last parameter)
                         Dim startPos As Integer = If(clsToken.lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation, 1, 0)
                         For intPos As Integer = startPos To clsToken.lstTokens.Count - 2
+                            Dim clsTokenObject As clsRToken = clsToken.lstTokens.Item(intPos)
                             'if the first parameter is a package operator ('::'), then make this the package name for the returned element
                             If intPos = startPos AndAlso
-                                    clsToken.lstTokens.Item(intPos).enuToken = clsRToken.typToken.ROperatorBinary AndAlso
-                                    clsToken.lstTokens.Item(intPos).strTxt = "::" Then
-                                If clsToken.lstTokens.Item(intPos).lstTokens.Count < 2 Then
-                                    Throw New Exception("Package operator token has " & clsToken.lstTokens.Item(intPos).lstTokens.Count &
-                                                                " children. Package operator must have at least 2 children (plus an Optional presentation child).")
+                                    clsTokenObject.enuToken = clsRToken.typToken.ROperatorBinary AndAlso
+                                    clsTokenObject.strTxt = "::" Then
+                                If clsTokenObject.lstTokens.Count < 2 OrElse clsTokenObject.lstTokens.Count > 3 Then
+                                    Throw New Exception("The package operator '::' has " & clsTokenObject.lstTokens.Count &
+                                                        " parameters. It must have 2 parameters (plus an optional presentation parameter).")
                                 End If
-                                strPackageNameNew = clsToken.lstTokens.Item(intPos).lstTokens.Item(clsToken.lstTokens.Item(intPos).lstTokens.Count - 2).strTxt
-                                lstObjectsNew.Add(GetRElement(clsToken.lstTokens.Item(intPos).lstTokens.Item(clsToken.lstTokens.Item(intPos).lstTokens.Count - 1), dctAssignments))
+                                'get the package name and any package presentation information
+                                Dim clsTokenPackageName As clsRToken = clsTokenObject.lstTokens.Item(clsTokenObject.lstTokens.Count - 2)
+                                strPackageNameNew = clsTokenPackageName.strTxt
+                                strPackagePrefixNew = If(clsTokenPackageName.lstTokens.Count > 0 AndAlso clsTokenPackageName.lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation,
+                                                      clsTokenPackageName.lstTokens.Item(0).strTxt, "")
+                                'get the object associated with the package, and add it to the object list
+                                lstObjectsNew.Add(GetRElement(clsTokenObject.lstTokens.Item(clsTokenObject.lstTokens.Count - 1), dctAssignments))
                                 Continue For
                             End If
-                            lstObjectsNew.Add(GetRElement(clsToken.lstTokens.Item(intPos), dctAssignments))
+                            lstObjectsNew.Add(GetRElement(clsTokenObject, dctAssignments))
                         Next
 
                         'the last item in the parameter list is the element we need to return
-                        Return GetRElement(clsToken.lstTokens.Item(clsToken.lstTokens.Count - 1), dctAssignments, bBracketedNew, strPackageNameNew, lstObjectsNew)
+                        Return GetRElement(clsToken.lstTokens.Item(clsToken.lstTokens.Count - 1), dctAssignments, bBracketedNew, strPackageNameNew, strPackagePrefixNew, lstObjectsNew)
                     Case "::"
-                        'the '::' operator has two parameters, the first is the package name, the second contains the element we need to return
-                        Return GetRElement(clsToken.lstTokens.Item(clsToken.lstTokens.Count - 1), dctAssignments, bBracketedNew, clsToken.lstTokens.Item(clsToken.lstTokens.Count - 2).strTxt)
+                        'the '::' operator parameter list contains:
+                        ' - the presentation string (optional)
+                        ' - the package name
+                        ' - the element associated with the package
+                        If clsToken.lstTokens.Count < 2 OrElse clsToken.lstTokens.Count > 3 Then
+                            Throw New Exception("The package operator '::' has " & clsToken.lstTokens.Count &
+                                                " parameters. It must have 2 parameters (plus an optional presentation parameter).")
+                        End If
+                        Dim strPackageNameNew As String = clsToken.lstTokens.Item(clsToken.lstTokens.Count - 2).strTxt
+                        Dim strPackagePrefixNew As String = If(clsToken.lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation,
+                                                            clsToken.lstTokens.Item(0).strTxt, "")
+                        Return GetRElement(clsToken.lstTokens.Item(clsToken.lstTokens.Count - 1), dctAssignments, bBracketedNew, strPackageNameNew, strPackagePrefixNew)
                     Case Else 'else if not an object or package operator, then add each parameter to the operator
                         Dim clsOperator As New clsRElementOperator(clsToken, bBracketedNew)
                         Dim startPos As Integer = If(clsToken.lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation, 1, 0)
@@ -786,10 +813,10 @@ Public Class clsRStatement
 
                 'if element has a package name or object list, then return a property element
                 If Not String.IsNullOrEmpty(strPackageName) OrElse Not IsNothing(lstObjects) Then
-                    Return New clsRElementProperty(clsToken, bBracketedNew, strPackageName, lstObjects) 'TODO allow elementProperty to be assignable?
+                    Return New clsRElementProperty(clsToken, bBracketedNew, strPackageName, strPackagePrefix, lstObjects) 'TODO allow elementProperty to be assignable?
                 End If
 
-                'if element was assigned in a previous statement, then returned an assigned element
+                'if element was assigned in a previous statement, then return an assigned element
                 Dim clsStatement As clsRStatement = If(dctAssignments.ContainsKey(clsToken.strTxt), dctAssignments(clsToken.strTxt), Nothing)
                 If Not IsNothing(clsStatement) Then
                     Return New clsRElementAssignable(clsToken, clsStatement, bBracketedNew)

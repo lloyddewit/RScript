@@ -5,8 +5,9 @@
 
     Public Sub New(clsToken As clsRToken, Optional bBracketedNew As Boolean = False,
                    Optional strPackageNameNew As String = "",
+                   Optional strPackagePrefix As String = "",
                    Optional lstObjectsNew As List(Of clsRElement) = Nothing)
-        MyBase.New(clsToken, bBracketedNew, strPackageNameNew, lstObjectsNew)
+        MyBase.New(clsToken, bBracketedNew, strPackageNameNew, strPackagePrefix, lstObjectsNew)
     End Sub
 
 

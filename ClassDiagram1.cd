@@ -14,7 +14,7 @@
       <FileName>clsRElement.vb</FileName>
     </TypeIdentifier>
   </Class>
-  <Class Name="RScript.clsRElementProperty" Collapsed="true">
+  <Class Name="RScript.clsRElementProperty">
     <Position X="4.25" Y="4" Width="1.5" />
     <TypeIdentifier>
       <HashCode>gAgAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
@@ -22,7 +22,7 @@
     </TypeIdentifier>
   </Class>
   <Class Name="RScript.clsRElementFunction" Collapsed="true">
-    <Position X="4.25" Y="5" Width="1.5" />
+    <Position X="4.25" Y="6.25" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQ=</HashCode>
       <FileName>clsRElementFunction.vb</FileName>
