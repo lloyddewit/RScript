@@ -136,7 +136,20 @@ Public Class clsRStatement
     End Sub
 
     '''--------------------------------------------------------------------------------------------
-    ''' <summary>   Returns this object as a valid, executable R statement. </summary>
+    ''' <summary>   
+    ''' Returns this object as a valid, executable R statement. 
+    ''' The script may contain formatting information such as spaces, comments and extra new lines.
+    ''' If this object was created by analysing original R script, then the returned script's formatting will be as close as possible to the original.
+    ''' The script may vary slightly because some formatting information is lost in the object model.
+    ''' For lost formatting, the formatting will be done according to the guidelines in:
+    ''' https://style.tidyverse.org/syntax.html
+    ''' The returned script will always show:
+    ''' No spaces before commas
+    ''' No spaces before brackets
+    ''' No spaces before package ('::') and object ('$') operators
+    ''' One space before parameter assignments ('=')
+    ''' For example,  'pkg ::obj1 $obj2$fn1 (a ,b=1,    c    = 2 )' will be returned as 'pkg::obj1$obj2$fn1(a, b =1, c = 2)'
+    ''' </summary> 
     '''
     ''' <returns>   The current state of this object as a valid, executable R statement. </returns>
     '''--------------------------------------------------------------------------------------------
@@ -183,7 +196,7 @@ Public Class clsRStatement
                     For Each clsRParameter In clsElement.lstParameters
                         strScript &= If(bPrefixComma, ",", "")
                         bPrefixComma = True
-                        strScript &= If(String.IsNullOrEmpty(clsRParameter.strArgumentName), "", clsRParameter.clsPresentation.strPrefix & clsRParameter.strArgumentName + "=")
+                        strScript &= If(String.IsNullOrEmpty(clsRParameter.strArgumentName), "", clsRParameter.clsPresentation.strPrefix & clsRParameter.strArgumentName + " =")
                         strScript &= GetScriptElement(clsRParameter.clsArgValue)
                     Next
                 End If
@@ -197,7 +210,7 @@ Public Class clsRStatement
                     bPrefixOperator = True
                     strScript &= GetScriptElement(clsRParameter.clsArgValue)
                 Next
-                strScript &= If(clsElement.lstParameters.Count = 1 AndAlso Not clsElement.bFirstParamOnRight, clsElement.strTxt, "")
+                strScript &= If(clsElement.lstParameters.Count = 1 AndAlso Not clsElement.bFirstParamOnRight, clsElement.clsPresentation.strPrefix & clsElement.strTxt, "")
             Case GetType(clsRElementKeyWord) 'TODO
             Case GetType(clsRElement), GetType(clsRElementAssignable)
                 strScript &= clsElement.clsPresentation.strPrefix & clsElement.strTxt
@@ -759,8 +772,7 @@ Public Class clsRStatement
                                 'get the package name and any package presentation information
                                 Dim clsTokenPackageName As clsRToken = clsTokenObject.lstTokens.Item(clsTokenObject.lstTokens.Count - 2)
                                 strPackageNameNew = clsTokenPackageName.strTxt
-                                strPackagePrefixNew = If(clsTokenPackageName.lstTokens.Count > 0 AndAlso clsTokenPackageName.lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation,
-                                                      clsTokenPackageName.lstTokens.Item(0).strTxt, "")
+                                strPackagePrefixNew = GetPackagePrefix(clsTokenPackageName)
                                 'get the object associated with the package, and add it to the object list
                                 lstObjectsNew.Add(GetRElement(clsTokenObject.lstTokens.Item(clsTokenObject.lstTokens.Count - 1), dctAssignments))
                                 Continue For
@@ -779,9 +791,9 @@ Public Class clsRStatement
                             Throw New Exception("The package operator '::' has " & clsToken.lstTokens.Count &
                                                 " parameters. It must have 2 parameters (plus an optional presentation parameter).")
                         End If
-                        Dim strPackageNameNew As String = clsToken.lstTokens.Item(clsToken.lstTokens.Count - 2).strTxt
-                        Dim strPackagePrefixNew As String = If(clsToken.lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation,
-                                                            clsToken.lstTokens.Item(0).strTxt, "")
+                        Dim clsTokenPackageName As clsRToken = clsToken.lstTokens.Item(clsToken.lstTokens.Count - 2)
+                        Dim strPackageNameNew As String = clsTokenPackageName.strTxt
+                        Dim strPackagePrefixNew As String = GetPackagePrefix(clsTokenPackageName)
                         Return GetRElement(clsToken.lstTokens.Item(clsToken.lstTokens.Count - 1), dctAssignments, bBracketedNew, strPackageNameNew, strPackagePrefixNew)
                     Case Else 'else if not an object or package operator, then add each parameter to the operator
                         Dim clsOperator As New clsRElementOperator(clsToken, bBracketedNew)
@@ -833,6 +845,11 @@ Public Class clsRStatement
         Throw New Exception("It should be impossible for the code to reach this point.")
     End Function
 
+    Private Shared Function GetPackagePrefix(clsTokenPackageName As clsRToken) As String
+        Return If(clsTokenPackageName.lstTokens.Count > 0 AndAlso clsTokenPackageName.lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation,
+                                                              clsTokenPackageName.lstTokens.Item(0).strTxt, "")
+    End Function
+
     Private Function GetRParameterNamed(clsToken As clsRToken, dctAssignments As Dictionary(Of String, clsRStatement)) As clsRParameterNamed
         If IsNothing(clsToken) Then
             Return Nothing
@@ -845,13 +862,19 @@ Public Class clsRStatement
                                         " children. Named parameter must have at least 2 children (plus an Optional presentation child).")
                 End If
 
+                Dim clsTokenArgumentName = clsToken.lstTokens.Item(clsToken.lstTokens.Count - 2)
                 Dim clsParameterNamed As New clsRParameterNamed With {
-                    .strArgumentName = clsToken.lstTokens.Item(clsToken.lstTokens.Count - 2).strTxt}
+                    .strArgumentName = clsTokenArgumentName.strTxt}
                 clsParameterNamed.clsArgValue = GetRElement(clsToken.lstTokens.Item(clsToken.lstTokens.Count - 1), dctAssignments)
+
+                'set the parameter's formatting prefix to the prefix of the parameter name
+                '    Note: if the equals sign has any formatting information then this information 
+                '          will be lost.
                 clsParameterNamed.clsPresentation.strPrefix =
-                        If(clsToken.lstTokens.Item(0).lstTokens.Count > 0 AndAlso
-                                clsToken.lstTokens.Item(0).lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation,
-                                clsToken.lstTokens.Item(0).lstTokens.Item(0).strTxt, "")
+                        If(clsTokenArgumentName.lstTokens.Count > 0 AndAlso
+                                clsTokenArgumentName.lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation,
+                                clsTokenArgumentName.lstTokens.Item(0).strTxt, "")
+
                 Return clsParameterNamed
             Case ","
                 ''if ',' is followed by a parameter name or value (e.g. 'fn(a,b)'), then return the parameter
