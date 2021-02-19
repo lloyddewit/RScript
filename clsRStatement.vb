@@ -14,6 +14,8 @@ Public Class clsRStatement
 
     Public strAssignmentPrefix As String
 
+    Public strSuffix As String
+
     ''' <summary>   The element assigned to by the statement (e.g. 'a' in the statement 'a=b').
     '''             If there is no assignment (e.g. as in 'myFunction(a)' then set to 'nothing'. </summary>
     Public clsAssignment As clsRElement = Nothing
@@ -128,10 +130,16 @@ Public Class clsRStatement
         End If
 
         'check if the statement is terminated with a semi-colon
-        If lstTokenTree.Item(lstTokenTree.Count - 1).enuToken = clsRToken.typToken.REndStatement AndAlso
-             lstTokenTree.Item(lstTokenTree.Count - 1).strTxt = ";" Then
+        Dim clsTokenEndStatement As clsRToken = lstTokenTree.Item(lstTokenTree.Count - 1)
+        If clsTokenEndStatement.enuToken = clsRToken.typToken.REndStatement AndAlso
+             clsTokenEndStatement.strTxt = ";" Then
             bTerminateWithNewline = False
         End If
+
+        'store any remaining presentation data
+        strSuffix = If(clsTokenEndStatement.lstTokens.Count > 0 AndAlso
+                       clsTokenEndStatement.lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation,
+                       clsTokenEndStatement.lstTokens.Item(0).strTxt, "")
 
     End Sub
 
@@ -174,6 +182,7 @@ Public Class clsRStatement
             End If
         End If
 
+        strScript &= strSuffix
         strScript &= If(bTerminateWithNewline, vbLf, ";")
         Return strScript
     End Function

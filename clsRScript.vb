@@ -175,6 +175,8 @@ Public Class clsRScript
         Dim strLexemePrev As String = ""
         Dim strLexemeCurrent As String = ""
         Dim strLexemeNext As String
+        Dim bLexemeNextOnSameLine As Boolean
+        Dim bStatementContainsElement As Boolean = False
         Dim clsToken As clsRToken
 
         Dim stkNumOpenBrackets As Stack(Of Integer) = New Stack(Of Integer)
@@ -184,7 +186,7 @@ Public Class clsRScript
         stkIsScriptEnclosedByCurlyBrackets.Push(True)
 
         Dim stkTokenState As Stack(Of typTokenState) = New Stack(Of typTokenState)
-        stkTokenState.Push(typTokenState.WaitingForEndScript)
+        stkTokenState.Push(typTokenState.WaitingForStartScript)
 
         For intPos As Integer = 0 To lstLexemes.Count - 1
 
@@ -202,15 +204,20 @@ Public Class clsRScript
             End If
 
             strLexemeCurrent = lstLexemes.Item(intPos)
+            bStatementContainsElement = If(bStatementContainsElement, bStatementContainsElement, clsRToken.IsElement(strLexemeCurrent))
 
-            'find next non-space lexeme
+            'find next lexeme that represents an R element
             strLexemeNext = Nothing
+            bLexemeNextOnSameLine = True
             For intNextPos As Integer = intPos + 1 To lstLexemes.Count - 1
-                If Not String.IsNullOrEmpty(lstLexemes.Item(intNextPos)) AndAlso
-                        Not clsRToken.IsSequenceOfSpaces(lstLexemes.Item(intNextPos)) Then
+                If clsRToken.IsElement(lstLexemes.Item(intNextPos)) Then
                     strLexemeNext = lstLexemes.Item(intNextPos)
                     Exit For
                 End If
+                Select Case lstLexemes.Item(intNextPos)
+                    Case vbLf, vbCr, vbCr
+                        bLexemeNextOnSameLine = False
+                End Select
             Next intNextPos
 
             'determine whether the current sequence of tokens makes a complete valid R statement
@@ -232,7 +239,7 @@ Public Class clsRScript
             End Select
 
             'identify the token associated with the current lexeme and add the token to the list
-            clsToken = New clsRToken(strLexemePrev, strLexemeCurrent, strLexemeNext)
+            clsToken = New clsRToken(strLexemePrev, strLexemeCurrent, strLexemeNext, bLexemeNextOnSameLine)
 
             'Process key words
             '    Determine whether the next end statement will also be the end of the current script.
@@ -266,7 +273,10 @@ Public Class clsRScript
 
                     Case typTokenState.WaitingForStartScript
 
-                        If Not clsToken.enuToken = clsRToken.typToken.RNewLine Then
+                        If Not (clsToken.enuToken = clsRToken.typToken.RComment OrElse
+                                clsToken.enuToken = clsRToken.typToken.RPresentation OrElse
+                                clsToken.enuToken = clsRToken.typToken.RSpace OrElse
+                                clsToken.enuToken = clsRToken.typToken.RNewLine) Then
                             stkTokenState.Pop()
                             stkTokenState.Push(typTokenState.WaitingForEndScript)
                             If clsToken.strTxt = "{" Then
@@ -279,15 +289,18 @@ Public Class clsRScript
                     Case typTokenState.WaitingForEndScript
 
                         If clsToken.enuToken = clsRToken.typToken.RNewLine AndAlso
+                                bStatementContainsElement AndAlso                   'if statement contains at least one R element (i.e. not just spaces, comments, or newlines)
                                 stkNumOpenBrackets.Peek() = 0 AndAlso               'if there are no open brackets
                                 Not clsRToken.IsOperatorUserDefined(strLexemePrev) AndAlso    'if line doesn't end in a user-defined operator
                                 Not (clsRToken.IsOperatorReserved(strLexemePrev) AndAlso      'if line doesn't end in a predefined operator
                                      Not strLexemePrev = "~") Then                  '    unless it's a tilda (the only operator that doesn't need a right-hand value)
                             clsToken.enuToken = clsRToken.typToken.REndStatement
+                            bStatementContainsElement = False
                         End If
 
                         If clsToken.enuToken = clsRToken.typToken.REndStatement AndAlso
-                                stkIsScriptEnclosedByCurlyBrackets.Peek() = False Then
+                                stkIsScriptEnclosedByCurlyBrackets.Peek() = False AndAlso
+                                String.IsNullOrEmpty(strLexemeNext) Then
                             clsToken.enuToken = clsRToken.typToken.REndScript
                         End If
 
@@ -304,6 +317,26 @@ Public Class clsRScript
 
             'add new token to token list
             lstRTokens.Add(clsToken)
+
+            'Edge case: if the script has ended and there are no more R elements to process, 
+            'then return the token list.
+            ' 
+            'Note: Any formatting lexemes (i.e. spaces, comments or extra newlines), after the 
+            'script's final statement, will not be added to the token list.
+            'For example, for the script below, '#comment1' will be added to the token list but 
+            ''#comment2' will not:
+            '      
+            '    a <- 1
+            '    b <- a * 2 #comment1
+            '    #comment2
+            '          
+            'This was a deliberate design decision. Spaces, comments or extra newlines at the end 
+            'of a script serve no practical purpose and are rarely used.
+            'However storing these extra formatting lexemes would increase source code complexity.
+            If clsToken.enuToken = clsRToken.typToken.REndScript AndAlso
+                    String.IsNullOrEmpty(strLexemeNext) Then
+                Return lstRTokens
+            End If
         Next intPos
 
         Return lstRTokens

@@ -68,7 +68,7 @@ Public Class clsRToken
     '''                                 <paramref name="strLexemeCurrent"/>. </param>
     '''
     '''--------------------------------------------------------------------------------------------
-    Public Sub New(strLexemePrev As String, strLexemeCurrent As String, strLexemeNext As String)
+    Public Sub New(strLexemePrev As String, strLexemeCurrent As String, strLexemeNext As String, bLexemeNextOnSameLine As Boolean)
         'TODO refactor so that strLexemePrev and strLexemeNext are booleans rather than strings?
         If String.IsNullOrEmpty(strLexemeCurrent) Then
             Exit Sub
@@ -79,7 +79,7 @@ Public Class clsRToken
         If IsKeyWord(strLexemeCurrent) Then                   'reserved key word (e.g. if, else etc.)
             enuToken = clsRToken.typToken.RKeyWord
         ElseIf IsSyntacticName(strLexemeCurrent) Then
-            If strLexemeNext = "(" Then
+            If strLexemeNext = "(" AndAlso bLexemeNextOnSameLine Then
                 enuToken = clsRToken.typToken.RFunctionName   'function name
             Else
                 enuToken = clsRToken.typToken.RSyntacticName  'syntactic name
@@ -110,6 +110,7 @@ Public Class clsRToken
             enuToken = clsRToken.typToken.ROperatorUnaryRight
         ElseIf strLexemeCurrent = "~" AndAlso                 'unary left operator (e.g. x~)
                 (String.IsNullOrEmpty(strLexemeNext) OrElse
+                Not bLexemeNextOnSameLine OrElse
                 Not Regex.IsMatch(strLexemeNext, "^[a-zA-Z0-9_\.(\+\-\!~]")) Then
             enuToken = clsRToken.typToken.ROperatorUnaryLeft
         ElseIf IsOperatorReserved(strLexemeCurrent) OrElse    'binary operator (e.g. '+')
@@ -262,7 +263,7 @@ Public Class clsRToken
 
     '''--------------------------------------------------------------------------------------------
     ''' <summary>   Returns true if <paramref name="strTxt"/> is a functional R element 
-    '''             (i.e. not a space, comment or new line), else returns false. </summary>
+    '''             (i.e. not empty, and not a space, comment or new line), else returns false. </summary>
     '''
     ''' <param name="strTxt">   The text to check . </param>
     '''
@@ -270,9 +271,10 @@ Public Class clsRToken
     '''             (i.e. not a space, comment or new line), else returns false. </returns>
     '''--------------------------------------------------------------------------------------------
     Public Shared Function IsElement(strTxt As String) As Boolean 'TODO make private?
-        If Not IsNewLine(strTxt) AndAlso
-           Not IsSequenceOfSpaces(strTxt) AndAlso
-           Not IsComment(strTxt) Then
+        If Not (String.IsNullOrEmpty(strTxt) OrElse
+                IsNewLine(strTxt) OrElse
+                IsSequenceOfSpaces(strTxt) OrElse
+                IsComment(strTxt)) Then
             Return True
         End If
         Return False
