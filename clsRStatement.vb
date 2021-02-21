@@ -137,7 +137,8 @@ Public Class clsRStatement
         End If
 
         'store any remaining presentation data
-        strSuffix = If(clsTokenEndStatement.lstTokens.Count > 0 AndAlso
+        strSuffix = If(Not IsNothing(clsElement) AndAlso
+                       clsTokenEndStatement.lstTokens.Count > 0 AndAlso
                        clsTokenEndStatement.lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation,
                        clsTokenEndStatement.lstTokens.Item(0).strTxt, "")
 
@@ -312,7 +313,7 @@ Public Class clsRStatement
         '           with a new line or '}')
         If Not String.IsNullOrEmpty(strPrefix) Then
             'add a new end statement token that contains the presentation information
-            clsToken = New clsRToken(vbLf, clsRToken.typToken.REndStatement)
+            clsToken = New clsRToken("", clsRToken.typToken.REndStatement)
             clsToken.lstTokens.Add(New clsRToken(strPrefix, clsRToken.typToken.RPresentation))
             lstTokensNew.Add(clsToken)
         End If
@@ -845,8 +846,8 @@ Public Class clsRStatement
 
                 'else just return a regular element
                 Return New clsRElement(clsToken, bBracketedNew)
-            Case clsRToken.typToken.RPresentation
-                'presentation tokens should already have been processed by their parent token, so we can ignore
+            Case clsRToken.typToken.RPresentation, clsRToken.typToken.REndStatement
+                'if token can't be used to generate an R element then ignore
                 Return Nothing
             Case Else
                 Throw New Exception("The token has an unexpected type.")
