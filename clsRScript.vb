@@ -11,18 +11,7 @@
 'TODO convert public data members to properties (all classes)
 'TODO provide an option to get script with automatic indenting (specifiy num spaces for indent and max num Columns per line)
 ' 
-' 03/11/20
-' - Process multiline input. Newline indicates end of statement when: 
-'     1. line ends in an operator (excluding spaces and comments)  
-'     2. odd number of '()' or '[]' are open ('{}' are a special case related to key words)   
-' - Use assigned statements to manage the state of the R environment (ask David for more details)  
-'
 ' 17/11/20
-' - if comment on own line then link it to the next statement, else link to prev element  
-' - support all assignments including '=' and assign to right operators  
-' - store state of R environment   
-'       e.g. don't treat variables as text but store object they represent (e.g. value or function definition)
-'       RSyntax already does this
 ' - allow named operator params (R-Insta allows operator params to be named, but this infor is lost in script)
 '
 ' 07/02/21

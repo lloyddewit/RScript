@@ -1,6 +1,6 @@
 ﻿Public Class clsRParameter
     Public clsArgValue As clsRElement
-    Public clsPresentation As clsRElementPresentation = New clsRElementPresentation
+    Public strPrefix As String = ""
 
     '''--------------------------------------------------------------------------------------------
     ''' <summary>   TODO. </summary>
@@ -10,7 +10,7 @@
     Public Function GetAsDebugString() As String
         Return "Parameter: " & vbLf &
                 "clsArgValue: " & clsArgValue.GetAsDebugString() & vbLf &
-                "clsPresentation: " & clsPresentation.GetAsDebugString() & vbLf
+                "strPrefix: " & strPrefix & vbLf
     End Function
 
 End Class

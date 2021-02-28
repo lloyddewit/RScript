@@ -1,7 +1,14 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <ClassDiagram MajorVersion="1" MinorVersion="1">
-  <Class Name="RScript.clsRScript" Collapsed="true">
+  <Class Name="RScript.clsRScript">
     <Position X="0.5" Y="0.75" Width="1.5" />
+    <NestedTypes>
+      <Enum Name="RScript.clsRScript.typTokenState" Collapsed="true">
+        <TypeIdentifier>
+          <NewMemberFileName>clsRScript.vb</NewMemberFileName>
+        </TypeIdentifier>
+      </Enum>
+    </NestedTypes>
     <TypeIdentifier>
       <HashCode>AAgAAAAAAAAAAAAEAAAAAIAAAAAAAAAIAAAAAAAAAAA=</HashCode>
       <FileName>clsRScript.vb</FileName>
@@ -10,7 +17,7 @@
   <Class Name="RScript.clsRElement" Collapsed="true">
     <Position X="5.25" Y="0.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>AAgAAAAAAgAAAAAAAAAAAAAAAAAAAYAAAAAAAAAAAAA=</HashCode>
+      <HashCode>AAgAAAAAAgAAAAQAAAAAAAAAAAAAAIAAAAAAAAAAAAA=</HashCode>
       <FileName>clsRElement.vb</FileName>
     </TypeIdentifier>
   </Class>
@@ -42,17 +49,10 @@
       <FileName>clsRElementOperator.vb</FileName>
     </TypeIdentifier>
   </Class>
-  <Class Name="RScript.clsRElementPresentation" Collapsed="true">
-    <Position X="7.5" Y="0.75" Width="1.5" />
-    <TypeIdentifier>
-      <HashCode>AAgAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAABA=</HashCode>
-      <FileName>clsRElementPresentation.vb</FileName>
-    </TypeIdentifier>
-  </Class>
   <Class Name="RScript.clsRParameter" Collapsed="true">
     <Position X="10.25" Y="0.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>AAgAAAAAAAACAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAA=</HashCode>
+      <HashCode>AAgAAAAAAAACAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
       <FileName>clsRParameter.vb</FileName>
     </TypeIdentifier>
   </Class>
