@@ -563,6 +563,10 @@ Public Class clsRStatement
                     'if token is not the operator we're looking for, then exit select
                     If Not arrOperatorPrecedence(intPosOperators).Contains(clsToken.strTxt) Then
                         Exit Select
+                    ElseIf clsToken.lstTokens.Count > 1 OrElse
+                            (clsToken.lstTokens.Count > 0 AndAlso
+                            Not clsToken.lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation) Then
+                        Exit Select
                     End If
                     'make the previous and next tokens (up to the corresponding close bracket), the children of the current token
                     clsToken.lstTokens.Add(clsTokenPrev.CloneMe)

@@ -12,7 +12,7 @@
 'TODO provide an option to get script with automatic indenting (specifiy num spaces for indent and max num Columns per line)
 ' 
 ' 17/11/20
-' - allow named operator params (R-Insta allows operator params to be named, but this infor is lost in script)
+' - allow named operator params (R-Instat allows operator params to be named, but this infor is lost in script)
 '
 ' 07/02/21
 ' - handle complex assignments (examples from https://cran.r-project.org/doc/manuals/r-release/R-lang.html)
@@ -20,6 +20,15 @@
 '   x[3:5] <- 13:15
 '   names(x) <- c("a","b")
 '   names(x)[3] <- "Three"
+'   
+' 01/03/21
+' - how should bracket operator separators be modelled?
+'   strInput = "df[1:2,]"
+'   strInput = "df[,1:2]"
+'   strInput = "df[1:2,1:2]"
+'   strInput = "df[1:2,""x""]"
+'   strInput = "df[1:2,c(""x"",""y"")]"
+'
 
 Public Class clsRScript
 
