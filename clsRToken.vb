@@ -25,8 +25,10 @@ Public Class clsRToken
 
     ''' <summary>   The lexeme associated with the token. </summary>
     Public strTxt As String
+
     ''' <summary>   The token type (function name, key word, comment etc.).  </summary>
     Public enuToken As typToken
+
     ''' <summary>   The token's children. </summary>
     Public lstTokens As New List(Of clsRToken)
 

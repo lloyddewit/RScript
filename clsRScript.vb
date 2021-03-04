@@ -1,12 +1,11 @@
 ﻿Imports System.Text.RegularExpressions
 
-'TODO There are five types of constants: integer, logical, numeric, complex and string
-'TODO Private ReadOnly arrSpecialConstants() As String = {"NULL", "NA", "Inf", "NaN"}
+'TODO Should we model constants differently to syntactic names? (there are five types of constants: integer, logical, numeric, complex and string)
+'TODO Test special constants {"NULL", "NA", "Inf", "NaN"}
+'TODO Test function names as string constants. E.g 'x + y can equivalently be written "+"(x, y). Notice that since '+' is a non-standard function name, it needs to be quoted (see https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Writing-functions)'
 'TODO handle '...' (used in function definition)
 'TODO handle '.' normally just part of a syntactic name, but has a special meaning when in a function name, or when referring to data (represents no variable)
-'TODO insert invisible '{' and '}' for key words?
 'TODO is it possible for packages to be nested (e.g. 'p1::p1_1::f()')?
-'TODO handle function names as string constants. E.g 'x + y can equivalently be written "+"(x, y). Notice that since '+' is a non-standard function name, it needs to be quoted (see https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Writing-functions)'
 'TODO currently all newlines (vbLf, vbCr and vbCrLf) are converted to vbLf. Is it important to remember what the original new line character was?
 'TODO convert public data members to properties (all classes)
 'TODO provide an option to get script with automatic indenting (specifiy num spaces for indent and max num Columns per line)
@@ -14,13 +13,6 @@
 ' 17/11/20
 ' - allow named operator params (R-Instat allows operator params to be named, but this infor is lost in script)
 '
-' 07/02/21
-' - handle complex assignments (examples from https://cran.r-project.org/doc/manuals/r-release/R-lang.html)
-'   class(x) <- "foo"
-'   x[3:5] <- 13:15
-'   names(x) <- c("a","b")
-'   names(x)[3] <- "Three"
-'   
 ' 01/03/21
 ' - how should bracket operator separators be modelled?
 '   strInput = "df[1:2,]"
@@ -30,8 +22,10 @@
 '   strInput = "df[1:2,c(""x"",""y"")]"
 '
 
+''' <summary>   TODO Add class summary. </summary>
 Public Class clsRScript
 
+    ''' <summary>   The R statements in the script </summary>
     Public lstRStatements As New List(Of clsRStatement)
 
     ''' <summary>   The current state of the token parsing. </summary>
@@ -350,16 +344,6 @@ Public Class clsRScript
         For Each clsStatement As clsRStatement In lstRStatements
             strTxt &= clsStatement.GetAsExecutableScript()
         Next
-        Return strTxt
-    End Function
-
-    'TODO - delete this function when debugging phase finished.
-    Public Function GetAsDebugString() As String
-        Dim strTxt As String = "Script: " & vbLf
-        For Each clsStatement As clsRStatement In lstRStatements
-            strTxt &= clsStatement.GetAsDebugString()
-        Next
-
         Return strTxt
     End Function
 
