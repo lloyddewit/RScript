@@ -134,7 +134,6 @@ Public Class clsRScript
                     stkIsSingleBracket.Pop()
             End Select
 
-
             'adding the new char to the lexeme would make the lexeme invalid, 
             '       so we add the existing lexeme to the list and start a new lexeme
             lstLexemes.Add(strTxt)
@@ -142,7 +141,6 @@ Public Class clsRScript
         Next
 
         lstLexemes.Add(strTxt)
-
         Return lstLexemes
     End Function
 
