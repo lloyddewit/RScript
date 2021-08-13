@@ -56,7 +56,7 @@
       <FileName>clsRParameterNamed.vb</FileName>
     </TypeIdentifier>
   </Class>
-  <Class Name="RScript.clsRScript" Collapsed="true">
+  <Class Name="RScript.clsRScript">
     <Position X="0.5" Y="0.5" Width="1.5" />
     <NestedTypes>
       <Enum Name="RScript.clsRScript.typTokenState" Collapsed="true">
@@ -70,25 +70,32 @@
       <FileName>clsRScript.vb</FileName>
     </TypeIdentifier>
   </Class>
-  <Class Name="RScript.clsRStatement" Collapsed="true">
-    <Position X="2.25" Y="0.5" Width="1.5" />
-    <TypeIdentifier>
-      <HashCode>AAARBAIhEAAMQAAAAABAA4QwAAAACAKEACAEAAACAjA=</HashCode>
-      <FileName>clsRStatement.vb</FileName>
-    </TypeIdentifier>
-  </Class>
   <Class Name="RScript.clsRToken" Collapsed="true">
     <Position X="12.75" Y="6" Width="1.5" />
-    <NestedTypes>
-      <Enum Name="RScript.clsRToken.typToken" Collapsed="true">
-        <TypeIdentifier>
-          <NewMemberFileName>clsRToken.vb</NewMemberFileName>
-        </TypeIdentifier>
-      </Enum>
-    </NestedTypes>
     <TypeIdentifier>
       <HashCode>AAiAAAAKAwAAAAAAIAAAIAAECAAAAAAJIAAAAACADAA=</HashCode>
       <FileName>clsRToken.vb</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="RScript.clsRDialog">
+    <Position X="0.5" Y="3.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAQAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>clsRDialog.vb</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="RScript.clsRControl">
+    <Position X="2.5" Y="3.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAAAAAAAAgQ=</HashCode>
+      <FileName>clsRControl.vb</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="RScript.clsRParameterSpec" Collapsed="true">
+    <Position X="2.5" Y="5.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAEEAIAA=</HashCode>
+      <FileName>clsRParameterSpec.vb</FileName>
     </TypeIdentifier>
   </Class>
   <Font Name="Segoe UI" Size="9" />

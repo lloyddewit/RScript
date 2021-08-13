@@ -80,6 +80,8 @@
     <Import Include="System.Threading.Tasks" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="clsRControl.vb" />
+    <Compile Include="clsRDialog.vb" />
     <Compile Include="clsRElement.vb" />
     <Compile Include="clsRElementAssignable.vb" />
     <Compile Include="clsRElementFunction.vb" />
@@ -88,6 +90,7 @@
     <Compile Include="clsRElementProperty.vb" />
     <Compile Include="clsRParameter.vb" />
     <Compile Include="clsRParameterNamed.vb" />
+    <Compile Include="clsRParameterSpec.vb" />
     <Compile Include="clsRScript.vb" />
     <Compile Include="clsRStatement.vb" />
     <Compile Include="clsRToken.vb" />
@@ -116,7 +119,6 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <None Include="ClassDiagram1.cd" />
     <None Include="ClassDiagram2.cd" />
     <None Include="My Project\Application.myapp">
       <Generator>MyApplicationCodeGenerator</Generator>
