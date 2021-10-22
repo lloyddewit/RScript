@@ -8,7 +8,7 @@
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <license type="expression">GPL-3.0-or-later</license>
     <description>Creates an object model which represents a valid R script.</description>
-    <releaseNotes>Initial test version.</releaseNotes>
+    <releaseNotes>Rebuild from Master branch.</releaseNotes>
     <copyright>$copyright$</copyright>
     <tags>R Statistics Statistical</tags>
   </metadata>
