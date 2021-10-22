@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package >
+  <metadata>
+    <id>$id$</id>
+    <version>$version$</version>
+    <title>$title$</title>
+    <authors>Stephen Lloyd</authors>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <license type="expression">GPL-3.0-or-later</license>
+    <description>Creates an object model which represents a valid R script.</description>
+    <releaseNotes>Initial test version.</releaseNotes>
+    <copyright>$copyright$</copyright>
+    <tags>R Statistics Statistical</tags>
+  </metadata>
+</package>
