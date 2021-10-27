@@ -10,7 +10,7 @@
       </Enum>
     </NestedTypes>
     <TypeIdentifier>
-      <HashCode>AAgAAAAAAAAAAAAEAAAAAIAAAAAAAAAIAAAAAAAAAAA=</HashCode>
+      <HashCode>AAAAAAAAAAAAAAAEAAAAAIAAAAAAAAAIAAAAAAAAAAA=</HashCode>
       <FileName>clsRScript.vb</FileName>
     </TypeIdentifier>
   </Class>
@@ -52,15 +52,8 @@
   <Class Name="RScript.clsRParameter" Collapsed="true">
     <Position X="10.25" Y="0.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>AAgAAAAAAAACAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <HashCode>AAgAAAAQAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAICA=</HashCode>
       <FileName>clsRParameter.vb</FileName>
-    </TypeIdentifier>
-  </Class>
-  <Class Name="RScript.clsRParameterNamed" Collapsed="true">
-    <Position X="10.25" Y="2" Width="1.5" />
-    <TypeIdentifier>
-      <HashCode>AAgAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAA=</HashCode>
-      <FileName>clsRParameterNamed.vb</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="RScript.clsRToken" Collapsed="true">
@@ -73,7 +66,7 @@
   <Class Name="RScript.clsRStatement" Collapsed="true">
     <Position X="2.25" Y="0.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>AAgRBAIhEAQMQAAAAABAA4QwAAAACAKEACAEAAACAjA=</HashCode>
+      <HashCode>AAARBAIhEAAMQAAAAABAA4QwAAAACAKEACAEAAACAjA=</HashCode>
       <FileName>clsRStatement.vb</FileName>
     </TypeIdentifier>
   </Class>

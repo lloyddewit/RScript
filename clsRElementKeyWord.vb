@@ -1,7 +1,7 @@
 ﻿Public Class clsRElementKeyWord
     Inherits clsRElement
 
-    Public lstRParameters As New List(Of clsRParameterNamed)
+    Public lstRParameters As New List(Of clsRParameter)
     Public clsScript As clsRScript
 
     Public Sub New(clsToken As clsRToken, Optional bBracketedNew As Boolean = False)

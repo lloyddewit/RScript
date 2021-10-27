@@ -87,7 +87,6 @@
     <Compile Include="clsRElementOperator.vb" />
     <Compile Include="clsRElementProperty.vb" />
     <Compile Include="clsRParameter.vb" />
-    <Compile Include="clsRParameterNamed.vb" />
     <Compile Include="clsRScript.vb" />
     <Compile Include="clsRStatement.vb" />
     <Compile Include="clsRToken.vb" />

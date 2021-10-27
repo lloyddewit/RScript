@@ -227,7 +227,7 @@ Public Class clsRStatement
                     For Each clsRParameter In clsElement.lstParameters
                         strScript &= If(bPrefixComma, ",", "")
                         bPrefixComma = True
-                        strScript &= If(String.IsNullOrEmpty(clsRParameter.strArgumentName), "", clsRParameter.strPrefix & clsRParameter.strArgumentName + " =")
+                        strScript &= If(String.IsNullOrEmpty(clsRParameter.strArgName), "", clsRParameter.strPrefix & clsRParameter.strArgName + " =")
                         strScript &= GetScriptElement(clsRParameter.clsArgValue)
                     Next
                 End If
@@ -756,7 +756,7 @@ Public Class clsRStatement
                         Throw New Exception("Function parameter list contained an unexpected presentation element.")
                     End If
 
-                    Dim clsParameter As clsRParameterNamed = GetRParameterNamed(clsTokenParam, dctAssignments)
+                    Dim clsParameter As clsRParameter = GetRParameterNamed(clsTokenParam, dctAssignments)
                     If Not IsNothing(clsParameter) Then
                         If bFirstParam AndAlso IsNothing(clsParameter.clsArgValue) Then
                             clsFunction.lstParameters.Add(clsParameter) 'add extra empty parameter for case 'f(,)'
@@ -924,7 +924,7 @@ Public Class clsRStatement
     ''' <returns>   A named parameter element constructed from the <paramref name="clsToken"/> token
     '''             tree. </returns>
     '''--------------------------------------------------------------------------------------------
-    Private Function GetRParameterNamed(clsToken As clsRToken, dctAssignments As Dictionary(Of String, clsRStatement)) As clsRParameterNamed
+    Private Function GetRParameterNamed(clsToken As clsRToken, dctAssignments As Dictionary(Of String, clsRStatement)) As clsRParameter
         If IsNothing(clsToken) Then
             Throw New ArgumentException("Cannot create a named parameter from an empty token.")
         End If
@@ -937,19 +937,19 @@ Public Class clsRStatement
                 End If
 
                 Dim clsTokenArgumentName = clsToken.lstTokens.Item(clsToken.lstTokens.Count - 2)
-                Dim clsParameterNamed As New clsRParameterNamed With {
-                    .strArgumentName = clsTokenArgumentName.strTxt}
-                clsParameterNamed.clsArgValue = GetRElement(clsToken.lstTokens.Item(clsToken.lstTokens.Count - 1), dctAssignments)
+                Dim clsParameter As New clsRParameter With {
+                    .strArgName = clsTokenArgumentName.strTxt}
+                clsParameter.clsArgValue = GetRElement(clsToken.lstTokens.Item(clsToken.lstTokens.Count - 1), dctAssignments)
 
                 'set the parameter's formatting prefix to the prefix of the parameter name
                 '    Note: if the equals sign has any formatting information then this information 
                 '          will be lost.
-                clsParameterNamed.strPrefix =
+                clsParameter.strPrefix =
                         If(clsTokenArgumentName.lstTokens.Count > 0 AndAlso
                                 clsTokenArgumentName.lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation,
                                 clsTokenArgumentName.lstTokens.Item(0).strTxt, "")
 
-                Return clsParameterNamed
+                Return clsParameter
             Case ","
                 'if ',' is followed by a parameter name or value (e.g. 'fn(a,b)'), then return the parameter
                 Try
@@ -957,12 +957,12 @@ Public Class clsRStatement
                     Return GetRParameterNamed(GetChildPosNonPresentation(clsToken), dctAssignments)
                 Catch ex As Exception
                     'return empty parameter (e.g. for cases like 'fn(a,)')
-                    Return (New clsRParameterNamed)
+                    Return (New clsRParameter)
                 End Try
             Case ")"
                 Return Nothing
             Case Else
-                Dim clsParameterNamed As New clsRParameterNamed With {
+                Dim clsParameterNamed As New clsRParameter With {
                     .clsArgValue = GetRElement(clsToken, dctAssignments)
                 }
                 clsParameterNamed.strPrefix = If(clsToken.lstTokens.Count > 0 AndAlso clsToken.lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation, clsToken.lstTokens.Item(0).strTxt, "")
