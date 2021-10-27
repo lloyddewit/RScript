@@ -1,5 +1,9 @@
 ﻿Public Class clsRParameter
+    Public strArgName As String 'TODO spaces around '=' as option?
     Public clsArgValue As clsRElement
+    Public clsArgValueDefault As clsRElement
+    Public iArgPos As Integer
+    Public iArgPosDefinition As Integer
     Public strPrefix As String = ""
 
     '''--------------------------------------------------------------------------------------------

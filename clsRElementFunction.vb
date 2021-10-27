@@ -1,7 +1,7 @@
 ﻿Public Class clsRElementFunction
     Inherits clsRElementProperty
 
-    Public lstParameters As New List(Of clsRParameterNamed)
+    Public lstParameters As New List(Of clsRParameter)
 
     Public Sub New(clsToken As clsRToken, Optional bBracketedNew As Boolean = False,
                    Optional strPackageNameNew As String = "",
@@ -20,7 +20,7 @@
     Public Overloads Function GetAsDebugString() As String
         Dim strTxt As String = "ElementFunction: " & vbLf
 
-        For Each clsParameter As clsRParameterNamed In lstParameters
+        For Each clsParameter As clsRParameter In lstParameters
             strTxt &= clsParameter.GetAsDebugString()
         Next
 
