@@ -79,7 +79,7 @@ Public Class clsRStatement
         arrOperatorPrecedence(intOperatorsUserDefined) = New String() {"%"}    'any operator that starts with '%' (including user-defined operators)
         arrOperatorPrecedence(7) = New String() {"*", "/"}
         arrOperatorPrecedence(8) = New String() {"+", "-"}
-        arrOperatorPrecedence(9) = New String() {"<>", "<=", ">=", "==", "!="}
+        arrOperatorPrecedence(9) = New String() {"<", ">", "<>", "<=", ">=", "==", "!="}
         arrOperatorPrecedence(10) = New String() {"!"}
         arrOperatorPrecedence(11) = New String() {"&", "&&"}
         arrOperatorPrecedence(12) = New String() {"|", "||"}

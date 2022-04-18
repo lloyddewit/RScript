@@ -145,7 +145,8 @@ Public Class clsRToken
     End Function
 
     '''--------------------------------------------------------------------------------------------
-    ''' <summary>   Returns true if <paramref name="strTxt"/> is a valid lexeme, else returns false.
+    ''' <summary>   Returns true if <paramref name="strTxt"/> is a valid lexeme (either partial or 
+    '''             complete), else returns false.
     '''             </summary>
     '''
     ''' <param name="strTxt">   A sequence of characters from a syntactically correct R script </param>
@@ -158,13 +159,22 @@ Public Class clsRToken
             Return False
         End If
 
+        ' if string constant (starts with single, double or backtick)
+        '    Note: String constants are the only lexemes that can contain newlines.
+        '          So if we process string constants first, then it makes checks below simpler.
+        If IsConstantString(strTxt) Then
+            ' if string constant is closed and followed by another character (e.g. '"hello"\n')
+            If Regex.IsMatch(strTxt, strTxt(0) & "(.|\n)*" & strTxt(0) & "(.|\n)+") Then
+                Return False
+            End If
+            Return True
+        End If
+
         'if string is not a valid lexeme ...
-        If Not strTxt = vbCrLf AndAlso Regex.IsMatch(strTxt, ".+\n$") OrElse 'string is >1 char and ends in newline (handy to do this test first because it simplifies the regular expressions below)
-                Regex.IsMatch(strTxt, ".+\r$") OrElse                        'string is >1 char and ends in carriage return
-                Regex.IsMatch(strTxt, "^%.*%.+") OrElse                      'string is a user-defined operator followed by another character
-                Regex.IsMatch(strTxt, "^'.*'.+") OrElse                      'string is a single quoted string followed by another character
-                Regex.IsMatch(strTxt, "^"".*"".+") OrElse                    'string is a double quoted string followed by another character
-                Regex.IsMatch(strTxt, "^`.*`.+") Then                        'string is a backtick quoted string followed by another character
+        If (Regex.IsMatch(strTxt, ".+\n$") _                 'string is >1 char and ends in newline
+                    AndAlso Not (strTxt = vbCrLf OrElse IsConstantString(strTxt))) _
+                OrElse Regex.IsMatch(strTxt, ".+\r$") _      'string is >1 char and ends in carriage return
+                OrElse Regex.IsMatch(strTxt, "^%.*%.+") Then 'string is a user-defined operator followed by another character
             Return False
         End If
 
@@ -177,7 +187,6 @@ Public Class clsRToken
                 strTxt = "," OrElse strTxt = ";" OrElse      'parameter separator or end statement
                 IsBracket(strTxt) OrElse                     'bracket (e.g. '{')
                 IsSequenceOfSpaces(strTxt) OrElse            'sequence of spaces
-                IsConstantString(strTxt) OrElse              'string constant (starts with single or double)
                 IsOperatorUserDefined(strTxt) OrElse         'user-defined operator (starts with '%*')
                 IsComment(strTxt) Then                       'comment (starts with '#*')
             Return True
@@ -211,9 +220,10 @@ Public Class clsRToken
     '''--------------------------------------------------------------------------------------------
     ''' <summary>   Returns true if <paramref name="strTxt"/> is a complete or partial string 
     '''             constant, else returns false.<para>
-    '''             String constants are delimited by a pair of single (‘'’) or double (‘"’) quotes 
-    '''             and can contain all other printable characters. Quotes and other special 
-    '''             characters within strings are specified using escape sequences. </para></summary>
+    '''             String constants are delimited by a pair of single (‘'’), double (‘"’)
+    '''             or backtick ('`') quotes and can contain all other printable characters. 
+    '''             Quotes and other special characters within strings are specified using escape 
+    '''             sequences. </para></summary>
     '''
     ''' <param name="strTxt">   The text to check. </param>
     '''
@@ -221,8 +231,10 @@ Public Class clsRToken
     '''             else returns false.</returns>
     '''--------------------------------------------------------------------------------------------
     Private Shared Function IsConstantString(strTxt As String) As Boolean
-        If Not String.IsNullOrEmpty(strTxt) AndAlso
-            (Regex.IsMatch(strTxt, "^"".*") OrElse (Regex.IsMatch(strTxt, "^'.*"))) Then
+        If Not String.IsNullOrEmpty(strTxt) AndAlso (
+                Regex.IsMatch(strTxt, "^"".*") OrElse
+                Regex.IsMatch(strTxt, "^'.*") OrElse
+                Regex.IsMatch(strTxt, "^`.*")) Then
             Return True
         End If
         Return False
