@@ -160,11 +160,15 @@ Public Class clsRToken
         End If
 
         ' if string constant (starts with single, double or backtick)
-        '    Note: String constants are the only lexemes that can contain newlines.
+        '    Note: String constants are the only lexemes that can contain newlines and quotes. 
         '          So if we process string constants first, then it makes checks below simpler.
         If IsConstantString(strTxt) Then
             ' if string constant is closed and followed by another character (e.g. '"hello"\n')
-            If Regex.IsMatch(strTxt, strTxt(0) & "(.|\n)*" & strTxt(0) & "(.|\n)+") Then
+            ' Note: "(?<!\\)" is a Regex 'negative lookbehind'. It excludes quotes that are 
+            '       preceeded by a backslash.
+            If Regex.IsMatch(strTxt,
+                             strTxt(0) & "(.|\n)*" &
+                             "(?<!\\)" & strTxt(0) & "(.|\n)+") Then
                 Return False
             End If
             Return True
