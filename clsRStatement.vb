@@ -175,28 +175,32 @@ Public Class clsRStatement
     '''
     ''' <returns>   The current state of this object as a valid, executable R statement. </returns>
     '''--------------------------------------------------------------------------------------------
-    Public Function GetAsExecutableScript() As String
+    Public Function GetAsExecutableScript(Optional bIncludeFormatting As Boolean = True) As String
         Dim strScript As String
-        Dim strElement As String = GetScriptElement(clsElement)
+        Dim strElement As String = GetScriptElement(clsElement, bIncludeFormatting)
         'if there is no assignment, then just process the statement's element
         If IsNothing(clsAssignment) OrElse String.IsNullOrEmpty(strAssignmentOperator) Then
             strScript = strElement
         Else 'else if the statement has an assignment
-            Dim strAssigment As String = GetScriptElement(clsAssignment)
+            Dim strAssignment As String = GetScriptElement(clsAssignment, bIncludeFormatting)
+            Dim strAssignmentPrefixTmp = If(bIncludeFormatting, strAssignmentPrefix, "")
             'if the statement has a left assignment (e.g. 'x<-value', 'x<<-value' or 'x=value')
             If arrOperatorPrecedence(intOperatorsLeftAssignment1).Contains(strAssignmentOperator) OrElse
                 arrOperatorPrecedence(intOperatorsLeftAssignment2).Contains(strAssignmentOperator) Then
-                strScript = strAssigment & strAssignmentPrefix & strAssignmentOperator & strElement
+                strScript = strAssignment & strAssignmentPrefixTmp & strAssignmentOperator & strElement
             ElseIf arrOperatorPrecedence(intOperatorsRightAssignment).Contains(strAssignmentOperator) Then
                 'else if the statement has a right assignment (e.g. 'value->x' or 'value->>x')
-                strScript = strElement & strAssignmentPrefix & strAssignmentOperator & strAssigment
+                strScript = strElement & strAssignmentPrefixTmp & strAssignmentOperator & strAssignment
             Else
                 Throw New Exception("The statement's assignment operator is an unknown type.")
             End If
         End If
 
-        strScript &= strSuffix
-        strScript &= If(bTerminateWithNewline, vbLf, ";")
+        If bIncludeFormatting Then
+            strScript &= strSuffix
+            strScript &= If(bTerminateWithNewline, vbLf, ";")
+        End If
+
         Return strScript
     End Function
 
@@ -209,13 +213,14 @@ Public Class clsRStatement
     '''
     ''' <returns>   <paramref name="clsElement"/> as an executable R script. </returns>
     '''--------------------------------------------------------------------------------------------
-    Private Function GetScriptElement(clsElement As Object) As String
+    Private Function GetScriptElement(clsElement As Object, Optional bIncludeFormatting As Boolean = True) As String
 
         If IsNothing(clsElement) Then
             Return ""
         End If
 
         Dim strScript As String = ""
+        Dim strElementPrefix As String = If(bIncludeFormatting, clsElement.strPrefix, "")
         strScript &= If(clsElement.bBracketed, "(", "")
 
         Select Case clsElement.GetType()
@@ -227,17 +232,18 @@ Public Class clsRStatement
                     For Each clsRParameter In clsElement.lstParameters
                         strScript &= If(bPrefixComma, ",", "")
                         bPrefixComma = True
-                        strScript &= If(String.IsNullOrEmpty(clsRParameter.strArgName), "", clsRParameter.strPrefix & clsRParameter.strArgName + " =")
+                        Dim strParameterPrefix As String = If(bIncludeFormatting, clsRParameter.strPrefix, "")
+                        strScript &= If(String.IsNullOrEmpty(clsRParameter.strArgName), "", strParameterPrefix & clsRParameter.strArgName + " =")
                         strScript &= GetScriptElement(clsRParameter.clsArgValue)
                     Next
                 End If
                 strScript &= ")"
             Case GetType(clsRElementProperty)
-                strScript &= GetScriptElementProperty(clsElement)
+                strScript &= GetScriptElementProperty(clsElement, bIncludeFormatting)
             Case GetType(clsRElementOperator)
                 Dim bPrefixOperator As Boolean = clsElement.bFirstParamOnRight
                 For Each clsRParameter In clsElement.lstParameters
-                    strScript &= If(bPrefixOperator, clsElement.strPrefix & clsElement.strTxt, "")
+                    strScript &= If(bPrefixOperator, strElementPrefix & clsElement.strTxt, "")
                     bPrefixOperator = True
                     strScript &= GetScriptElement(clsRParameter.clsArgValue)
                 Next
@@ -248,12 +254,12 @@ Public Class clsRStatement
                     Case "[["
                         strScript &= "]]"
                     Case Else
-                        strScript &= If(clsElement.lstParameters.Count = 1 AndAlso Not clsElement.bFirstParamOnRight, clsElement.strPrefix & clsElement.strTxt, "")
+                        strScript &= If(clsElement.lstParameters.Count = 1 AndAlso Not clsElement.bFirstParamOnRight, strElementPrefix & clsElement.strTxt, "")
                 End Select
 
             Case GetType(clsRElementKeyWord) 'TODO add key word functionality
             Case GetType(clsRElement), GetType(clsRElementAssignable)
-                strScript &= clsElement.strPrefix & clsElement.strTxt
+                strScript &= strElementPrefix & clsElement.strTxt
         End Select
         strScript &= If(clsElement.bBracketed, ")", "")
         Return strScript
@@ -268,8 +274,9 @@ Public Class clsRStatement
     '''
     ''' <returns>   <paramref name="clsElement"/> as an executable R script. </returns>
     '''--------------------------------------------------------------------------------------------
-    Private Function GetScriptElementProperty(clsElement As clsRElementProperty) As String
-        Dim strScript As String = clsElement.strPrefix & If(String.IsNullOrEmpty(clsElement.strPackageName), "", clsElement.strPackageName & "::")
+    Private Function GetScriptElementProperty(clsElement As clsRElementProperty, Optional bIncludeFormatting As Boolean = True) As String
+        Dim strScript As String = If(bIncludeFormatting, clsElement.strPrefix, "") &
+                                  If(String.IsNullOrEmpty(clsElement.strPackageName), "", clsElement.strPackageName & "::")
         If Not IsNothing(clsElement.lstObjects) AndAlso clsElement.lstObjects.Count > 0 Then
             For Each clsObject In clsElement.lstObjects
                 strScript &= GetScriptElement(clsObject)

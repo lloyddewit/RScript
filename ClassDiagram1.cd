@@ -14,7 +14,7 @@
       <FileName>clsRScript.vb</FileName>
     </TypeIdentifier>
   </Class>
-  <Class Name="RScript.clsRElement" Collapsed="true">
+  <Class Name="RScript.clsRElement">
     <Position X="5.25" Y="0.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAgAAAAAAgAAAAQAAAAAAAAAAAAAAIAAAAAAAAAAAAA=</HashCode>
@@ -49,7 +49,7 @@
       <FileName>clsRElementOperator.vb</FileName>
     </TypeIdentifier>
   </Class>
-  <Class Name="RScript.clsRParameter" Collapsed="true">
+  <Class Name="RScript.clsRParameter">
     <Position X="10.25" Y="0.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAgAAAAAAAQCAAQCAAAAABAAAAAAAAAAAAAAAAAAACA=</HashCode>
@@ -58,12 +58,19 @@
   </Class>
   <Class Name="RScript.clsRToken" Collapsed="true">
     <Position X="12.25" Y="0.75" Width="1.5" />
+    <NestedTypes>
+      <Enum Name="RScript.clsRToken.typToken" Collapsed="true">
+        <TypeIdentifier>
+          <NewMemberFileName>clsRToken.vb</NewMemberFileName>
+        </TypeIdentifier>
+      </Enum>
+    </NestedTypes>
     <TypeIdentifier>
       <HashCode>AAiAAAAKAwAAAAAAIAAAIAAECAAAAAAJIAAAAACADAA=</HashCode>
       <FileName>clsRToken.vb</FileName>
     </TypeIdentifier>
   </Class>
-  <Class Name="RScript.clsRStatement" Collapsed="true">
+  <Class Name="RScript.clsRStatement">
     <Position X="2.25" Y="0.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAARBAIhEAAMQAAAAABAA4QwAAAACAKEACAEAAACAjA=</HashCode>
