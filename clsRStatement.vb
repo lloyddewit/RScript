@@ -225,7 +225,7 @@ Public Class clsRStatement
 
         Select Case clsElement.GetType()
             Case GetType(clsRElementFunction)
-                strScript &= GetScriptElementProperty(clsElement)
+                strScript &= GetScriptElementProperty(clsElement, bIncludeFormatting)
                 strScript &= "("
                 If Not IsNothing(clsElement.lstParameters) Then
                     Dim bPrefixComma As Boolean = False
@@ -234,7 +234,7 @@ Public Class clsRStatement
                         bPrefixComma = True
                         Dim strParameterPrefix As String = If(bIncludeFormatting, clsRParameter.strPrefix, "")
                         strScript &= If(String.IsNullOrEmpty(clsRParameter.strArgName), "", strParameterPrefix & clsRParameter.strArgName + " =")
-                        strScript &= GetScriptElement(clsRParameter.clsArgValue)
+                        strScript &= GetScriptElement(clsRParameter.clsArgValue, bIncludeFormatting)
                     Next
                 End If
                 strScript &= ")"
@@ -245,7 +245,7 @@ Public Class clsRStatement
                 For Each clsRParameter In clsElement.lstParameters
                     strScript &= If(bPrefixOperator, strElementPrefix & clsElement.strTxt, "")
                     bPrefixOperator = True
-                    strScript &= GetScriptElement(clsRParameter.clsArgValue)
+                    strScript &= GetScriptElement(clsRParameter.clsArgValue, bIncludeFormatting)
                 Next
 
                 Select Case clsElement.strTxt
@@ -279,7 +279,7 @@ Public Class clsRStatement
                                   If(String.IsNullOrEmpty(clsElement.strPackageName), "", clsElement.strPackageName & "::")
         If Not IsNothing(clsElement.lstObjects) AndAlso clsElement.lstObjects.Count > 0 Then
             For Each clsObject In clsElement.lstObjects
-                strScript &= GetScriptElement(clsObject)
+                strScript &= GetScriptElement(clsObject, bIncludeFormatting)
                 strScript &= "$"
             Next
         End If

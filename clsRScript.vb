@@ -337,10 +337,10 @@ Public Class clsRScript
     '''
     ''' <returns>   The current state of this object as a valid, executable R script. </returns>
     '''--------------------------------------------------------------------------------------------
-    Public Function GetAsExecutableScript() As String
+    Public Function GetAsExecutableScript(Optional bIncludeFormatting As Boolean = True) As String
         Dim strTxt As String = ""
         For Each clsStatement As clsRStatement In lstRStatements
-            strTxt &= clsStatement.GetAsExecutableScript()
+            strTxt &= clsStatement.GetAsExecutableScript(bIncludeFormatting) & If(bIncludeFormatting, "", vbLf)
         Next
         Return strTxt
     End Function
