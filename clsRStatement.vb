@@ -173,6 +173,9 @@ Public Class clsRStatement
     '''                                                 'pkg::obj1$obj2$fn1(a, b =1, c = 2)'</item>
     ''' </list></summary>
     '''
+    ''' <param name="bIncludeFormatting">   If True, then include all formatting information in 
+    '''     returned string (comments, indents, padding spaces, extr line breaks etc. </param>
+    '''
     ''' <returns>   The current state of this object as a valid, executable R statement. </returns>
     '''--------------------------------------------------------------------------------------------
     Public Function GetAsExecutableScript(Optional bIncludeFormatting As Boolean = True) As String
@@ -210,6 +213,9 @@ Public Class clsRStatement
     ''' <param name="clsElement">   The R element to convert to an executable R script. 
     '''                             The R element may be a function, operator, constant, 
     '''                             syntactic name, key word etc. </param>
+    '''
+    ''' <param name="bIncludeFormatting">   If True, then include all formatting information in 
+    '''     returned string (comments, indents, padding spaces, extr line breaks etc. </param>
     '''
     ''' <returns>   <paramref name="clsElement"/> as an executable R script. </returns>
     '''--------------------------------------------------------------------------------------------
@@ -271,6 +277,9 @@ Public Class clsRStatement
     ''' <param name="clsElement">   The R element to convert to an executable R script. The R element
     '''                             may have an associated package name, and a list of associated 
     '''                             objects e.g. 'pkg::obj1$obj2$fn1(a)'. </param>
+    '''
+    ''' <param name="bIncludeFormatting">   If True, then include all formatting information in 
+    '''     returned string (comments, indents, padding spaces, extr line breaks etc. </param>
     '''
     ''' <returns>   <paramref name="clsElement"/> as an executable R script. </returns>
     '''--------------------------------------------------------------------------------------------
