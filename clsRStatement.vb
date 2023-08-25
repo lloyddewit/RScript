@@ -174,7 +174,7 @@ Public Class clsRStatement
     ''' </list></summary>
     '''
     ''' <param name="bIncludeFormatting">   If True, then include all formatting information in 
-    '''     returned string (comments, indents, padding spaces, extr line breaks etc. </param>
+    '''     returned string (comments, indents, padding spaces, extra line breaks etc. </param>
     '''
     ''' <returns>   The current state of this object as a valid, executable R statement. </returns>
     '''--------------------------------------------------------------------------------------------
@@ -215,7 +215,7 @@ Public Class clsRStatement
     '''                             syntactic name, key word etc. </param>
     '''
     ''' <param name="bIncludeFormatting">   If True, then include all formatting information in 
-    '''     returned string (comments, indents, padding spaces, extr line breaks etc. </param>
+    '''     returned string (comments, indents, padding spaces, extra line breaks etc. </param>
     '''
     ''' <returns>   <paramref name="clsElement"/> as an executable R script. </returns>
     '''--------------------------------------------------------------------------------------------
@@ -279,7 +279,7 @@ Public Class clsRStatement
     '''                             objects e.g. 'pkg::obj1$obj2$fn1(a)'. </param>
     '''
     ''' <param name="bIncludeFormatting">   If True, then include all formatting information in 
-    '''     returned string (comments, indents, padding spaces, extr line breaks etc. </param>
+    '''     returned string (comments, indents, padding spaces, extra line breaks etc. </param>
     '''
     ''' <returns>   <paramref name="clsElement"/> as an executable R script. </returns>
     '''--------------------------------------------------------------------------------------------
