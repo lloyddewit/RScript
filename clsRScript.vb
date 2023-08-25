@@ -336,7 +336,7 @@ Public Class clsRScript
     ''' <summary>   Returns this object as a valid, executable R script. </summary>
     '''
     ''' <param name="bIncludeFormatting">   If True, then include all formatting information in 
-    '''     returned string (comments, indents, padding spaces, extra line breaks etc. </param>
+    '''     returned string (comments, indents, padding spaces, extra line breaks etc.). </param>
     '''
     ''' <returns>   The current state of this object as a valid, executable R script. </returns>
     '''--------------------------------------------------------------------------------------------
