@@ -10,7 +10,7 @@
       </Enum>
     </NestedTypes>
     <TypeIdentifier>
-      <HashCode>AAAAAAAAAAAAAAAEAAAAAIAAAAAAAAAIAAAAAAAAAAA=</HashCode>
+      <HashCode>BAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAIAAAAAAAAAAA=</HashCode>
       <FileName>clsRScript.vb</FileName>
     </TypeIdentifier>
   </Class>
@@ -56,7 +56,7 @@
       <FileName>clsRParameter.vb</FileName>
     </TypeIdentifier>
   </Class>
-  <Class Name="RScript.clsRToken" Collapsed="true">
+  <Class Name="RScript.clsRToken">
     <Position X="12.25" Y="0.75" Width="1.5" />
     <NestedTypes>
       <Enum Name="RScript.clsRToken.typToken" Collapsed="true">

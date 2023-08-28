@@ -1,4 +1,5 @@
-﻿Imports System.Text.RegularExpressions
+﻿Imports System.Collections.Specialized
+Imports System.Text.RegularExpressions
 
 'TODO Should we model constants differently to syntactic names? (there are five types of constants: integer, logical, numeric, complex and string)
 'TODO Test special constants {"NULL", "NA", "Inf", "NaN"}
@@ -26,7 +27,7 @@
 Public Class clsRScript
 
     ''' <summary>   The R statements in the script </summary>
-    Public lstRStatements As New List(Of clsRStatement)
+    Public dctRStatements As New OrderedDictionary()
 
     ''' <summary>   The current state of the token parsing. </summary>
     Private Enum typTokenState
@@ -65,8 +66,9 @@ Public Class clsRScript
         Dim intPos As Integer = 0
         Dim dctAssignments As New Dictionary(Of String, clsRStatement)
         While (intPos < lstTokens.Count)
+            Dim iScriptPos As UInteger = lstTokens.Item(intPos).iScriptPos
             Dim clsStatement As clsRStatement = New clsRStatement(lstTokens, intPos, dctAssignments)
-            lstRStatements.Add(clsStatement)
+            dctRStatements.Add(iScriptPos, clsStatement)
 
             'if the value of an assigned element is new/updated
             If Not IsNothing(clsStatement.clsAssignment) Then
@@ -178,6 +180,8 @@ Public Class clsRScript
         Dim stkTokenState As Stack(Of typTokenState) = New Stack(Of typTokenState)
         stkTokenState.Push(typTokenState.WaitingForStartScript)
 
+        Dim iScriptPos As UInteger = 0
+
         For intPos As Integer = 0 To lstLexemes.Count - 1
 
             If stkNumOpenBrackets.Count < 1 Then
@@ -229,7 +233,8 @@ Public Class clsRScript
             End Select
 
             'identify the token associated with the current lexeme and add the token to the list
-            clsToken = New clsRToken(strLexemePrev, strLexemeCurrent, strLexemeNext, bLexemeNextOnSameLine)
+            clsToken = New clsRToken(strLexemePrev, strLexemeCurrent, strLexemeNext, bLexemeNextOnSameLine, iScriptPos)
+            iScriptPos += strLexemeCurrent.Length
 
             'Process key words
             '    Determine whether the next end statement will also be the end of the current script.
@@ -342,8 +347,8 @@ Public Class clsRScript
     '''--------------------------------------------------------------------------------------------
     Public Function GetAsExecutableScript(Optional bIncludeFormatting As Boolean = True) As String
         Dim strTxt As String = ""
-        For Each clsStatement As clsRStatement In lstRStatements
-            strTxt &= clsStatement.GetAsExecutableScript(bIncludeFormatting) & If(bIncludeFormatting, "", vbLf)
+        For Each clsStatement In dctRStatements
+            strTxt &= clsStatement.Value.GetAsExecutableScript(bIncludeFormatting) & If(bIncludeFormatting, "", vbLf)
         Next
         Return strTxt
     End Function
