@@ -43,16 +43,16 @@ Public Class clsRStatement
     ''' <summary>   The relative precedence of the R operators. This is a two-dimensional array 
     '''             because the operators are stored in groups together with operators that 
     '''             have the same precedence.</summary>
-    Private ReadOnly arrOperatorPrecedence(17)() As String
+    Private ReadOnly arrOperatorPrecedence(18)() As String
 
     'Constants for operator precedence groups that have special characteristics (e.g. must be unary)
     Private ReadOnly intOperatorsBrackets As Integer = 2
     Private ReadOnly intOperatorsUnaryOnly As Integer = 4
     Private ReadOnly intOperatorsUserDefined As Integer = 6
-    Private ReadOnly intOperatorsTilda As Integer = 13
-    Private ReadOnly intOperatorsRightAssignment As Integer = 14
-    Private ReadOnly intOperatorsLeftAssignment1 As Integer = 15
-    Private ReadOnly intOperatorsLeftAssignment2 As Integer = 16
+    Private ReadOnly intOperatorsTilda As Integer = 14
+    Private ReadOnly intOperatorsRightAssignment As Integer = 15
+    Private ReadOnly intOperatorsLeftAssignment1 As Integer = 16
+    Private ReadOnly intOperatorsLeftAssignment2 As Integer = 17
 
     '''--------------------------------------------------------------------------------------------
     ''' <summary>   
@@ -77,12 +77,13 @@ Public Class clsRStatement
         arrOperatorPrecedence(intOperatorsUnaryOnly) = New String() {"-", "+"} 'unary operarors
         arrOperatorPrecedence(5) = New String() {":"}
         arrOperatorPrecedence(intOperatorsUserDefined) = New String() {"%"}    'any operator that starts with '%' (including user-defined operators)
-        arrOperatorPrecedence(7) = New String() {"*", "/"}
-        arrOperatorPrecedence(8) = New String() {"+", "-"}
-        arrOperatorPrecedence(9) = New String() {"<", ">", "<>", "<=", ">=", "==", "!="}
-        arrOperatorPrecedence(10) = New String() {"!"}
-        arrOperatorPrecedence(11) = New String() {"&", "&&"}
-        arrOperatorPrecedence(12) = New String() {"|", "||"}
+        arrOperatorPrecedence(7) = New String() {"|>"}
+        arrOperatorPrecedence(8) = New String() {"*", "/"}
+        arrOperatorPrecedence(9) = New String() {"+", "-"}
+        arrOperatorPrecedence(10) = New String() {"<", ">", "<>", "<=", ">=", "==", "!="}
+        arrOperatorPrecedence(11) = New String() {"!"}
+        arrOperatorPrecedence(12) = New String() {"&", "&&"}
+        arrOperatorPrecedence(13) = New String() {"|", "||"}
         arrOperatorPrecedence(intOperatorsTilda) = New String() {"~"}          'unary or binary
         arrOperatorPrecedence(intOperatorsRightAssignment) = New String() {"->", "->>"}
         arrOperatorPrecedence(intOperatorsLeftAssignment1) = New String() {"<-", "<<-"}
