@@ -1,5 +1,4 @@
 ﻿Imports System.Collections.Specialized
-Imports System.Text.RegularExpressions
 
 'TODO Should we model constants differently to syntactic names? (there are five types of constants: integer, logical, numeric, complex and string)
 'TODO Test special constants {"NULL", "NA", "Inf", "NaN"}
@@ -26,7 +25,9 @@ Imports System.Text.RegularExpressions
 ''' <summary>   TODO Add class summary. </summary>
 Public Class clsRScript
 
-    ''' <summary>   The R statements in the script </summary>
+    ''' <summary>   
+    ''' The R statements in the script. The dictionary key is the start position of the statement 
+    ''' in the script. The dictionary value is the statement itself. </summary>
     Public dctRStatements As New OrderedDictionary()
 
     ''' <summary>   The current state of the token parsing. </summary>
@@ -38,15 +39,15 @@ Public Class clsRScript
     End Enum
 
     '''--------------------------------------------------------------------------------------------
-    ''' <summary>   Parses the R script in <paramref name="strInput"/> and populates the list of
-    '''             R statements.
+    ''' <summary>   Parses the R script in <paramref name="strInput"/> and populates the distionary
+    '''             of R statements.
     '''             <para>
     '''             This subroutine will accept, and correctly process all valid R. However, this 
     '''             class does not attempt to validate <paramref name="strInput"/>. If it is not 
     '''             valid R then this subroutine may still process the script without throwing an 
     '''             exception. In this case, the list of R statements will be undefined.
     '''             </para><para>
-    '''             In other words, this subroutine will not generate false negatives (reject 
+    '''             In other words, this subroutine should not generate false negatives (reject 
     '''             valid R) but may generate false positives (accept invalid R).
     '''             </para></summary>
     '''
@@ -65,7 +66,7 @@ Public Class clsRScript
 
         Dim intPos As Integer = 0
         Dim dctAssignments As New Dictionary(Of String, clsRStatement)
-        While (intPos < lstTokens.Count)
+        While intPos < lstTokens.Count
             Dim iScriptPos As UInteger = lstTokens.Item(intPos).iScriptPos
             Dim clsStatement As clsRStatement = New clsRStatement(lstTokens, intPos, dctAssignments)
             dctRStatements.Add(iScriptPos, clsStatement)
