@@ -1,4 +1,4 @@
-﻿Imports System.Text.RegularExpressions
+﻿Imports System.Collections.Specialized
 
 'TODO Should we model constants differently to syntactic names? (there are five types of constants: integer, logical, numeric, complex and string)
 'TODO Test special constants {"NULL", "NA", "Inf", "NaN"}
@@ -25,8 +25,10 @@
 ''' <summary>   TODO Add class summary. </summary>
 Public Class clsRScript
 
-    ''' <summary>   The R statements in the script </summary>
-    Public lstRStatements As New List(Of clsRStatement)
+    ''' <summary>   
+    ''' The R statements in the script. The dictionary key is the start position of the statement 
+    ''' in the script. The dictionary value is the statement itself. </summary>
+    Public dctRStatements As New OrderedDictionary()
 
     ''' <summary>   The current state of the token parsing. </summary>
     Private Enum typTokenState
@@ -37,15 +39,15 @@ Public Class clsRScript
     End Enum
 
     '''--------------------------------------------------------------------------------------------
-    ''' <summary>   Parses the R script in <paramref name="strInput"/> and populates the list of
-    '''             R statements.
+    ''' <summary>   Parses the R script in <paramref name="strInput"/> and populates the distionary
+    '''             of R statements.
     '''             <para>
     '''             This subroutine will accept, and correctly process all valid R. However, this 
     '''             class does not attempt to validate <paramref name="strInput"/>. If it is not 
     '''             valid R then this subroutine may still process the script without throwing an 
     '''             exception. In this case, the list of R statements will be undefined.
     '''             </para><para>
-    '''             In other words, this subroutine will not generate false negatives (reject 
+    '''             In other words, this subroutine should not generate false negatives (reject 
     '''             valid R) but may generate false positives (accept invalid R).
     '''             </para></summary>
     '''
@@ -64,9 +66,10 @@ Public Class clsRScript
 
         Dim intPos As Integer = 0
         Dim dctAssignments As New Dictionary(Of String, clsRStatement)
-        While (intPos < lstTokens.Count)
+        While intPos < lstTokens.Count
+            Dim iScriptPos As UInteger = lstTokens.Item(intPos).iScriptPos
             Dim clsStatement As clsRStatement = New clsRStatement(lstTokens, intPos, dctAssignments)
-            lstRStatements.Add(clsStatement)
+            dctRStatements.Add(iScriptPos, clsStatement)
 
             'if the value of an assigned element is new/updated
             If Not IsNothing(clsStatement.clsAssignment) Then
@@ -178,6 +181,8 @@ Public Class clsRScript
         Dim stkTokenState As Stack(Of typTokenState) = New Stack(Of typTokenState)
         stkTokenState.Push(typTokenState.WaitingForStartScript)
 
+        Dim iScriptPos As UInteger = 0
+
         For intPos As Integer = 0 To lstLexemes.Count - 1
 
             If stkNumOpenBrackets.Count < 1 Then
@@ -229,7 +234,8 @@ Public Class clsRScript
             End Select
 
             'identify the token associated with the current lexeme and add the token to the list
-            clsToken = New clsRToken(strLexemePrev, strLexemeCurrent, strLexemeNext, bLexemeNextOnSameLine)
+            clsToken = New clsRToken(strLexemePrev, strLexemeCurrent, strLexemeNext, bLexemeNextOnSameLine, iScriptPos)
+            iScriptPos += strLexemeCurrent.Length
 
             'Process key words
             '    Determine whether the next end statement will also be the end of the current script.
@@ -335,12 +341,15 @@ Public Class clsRScript
     '''--------------------------------------------------------------------------------------------
     ''' <summary>   Returns this object as a valid, executable R script. </summary>
     '''
+    ''' <param name="bIncludeFormatting">   If True, then include all formatting information in 
+    '''     returned string (comments, indents, padding spaces, extra line breaks etc.). </param>
+    '''
     ''' <returns>   The current state of this object as a valid, executable R script. </returns>
     '''--------------------------------------------------------------------------------------------
-    Public Function GetAsExecutableScript() As String
+    Public Function GetAsExecutableScript(Optional bIncludeFormatting As Boolean = True) As String
         Dim strTxt As String = ""
-        For Each clsStatement As clsRStatement In lstRStatements
-            strTxt &= clsStatement.GetAsExecutableScript()
+        For Each clsStatement In dctRStatements
+            strTxt &= clsStatement.Value.GetAsExecutableScript(bIncludeFormatting) & If(bIncludeFormatting, "", vbLf)
         Next
         Return strTxt
     End Function

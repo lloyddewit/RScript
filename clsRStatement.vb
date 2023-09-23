@@ -43,16 +43,16 @@ Public Class clsRStatement
     ''' <summary>   The relative precedence of the R operators. This is a two-dimensional array 
     '''             because the operators are stored in groups together with operators that 
     '''             have the same precedence.</summary>
-    Private ReadOnly arrOperatorPrecedence(17)() As String
+    Private ReadOnly arrOperatorPrecedence(18)() As String
 
     'Constants for operator precedence groups that have special characteristics (e.g. must be unary)
     Private ReadOnly intOperatorsBrackets As Integer = 2
     Private ReadOnly intOperatorsUnaryOnly As Integer = 4
     Private ReadOnly intOperatorsUserDefined As Integer = 6
-    Private ReadOnly intOperatorsTilda As Integer = 13
-    Private ReadOnly intOperatorsRightAssignment As Integer = 14
-    Private ReadOnly intOperatorsLeftAssignment1 As Integer = 15
-    Private ReadOnly intOperatorsLeftAssignment2 As Integer = 16
+    Private ReadOnly intOperatorsTilda As Integer = 14
+    Private ReadOnly intOperatorsRightAssignment As Integer = 15
+    Private ReadOnly intOperatorsLeftAssignment1 As Integer = 16
+    Private ReadOnly intOperatorsLeftAssignment2 As Integer = 17
 
     '''--------------------------------------------------------------------------------------------
     ''' <summary>   
@@ -77,12 +77,13 @@ Public Class clsRStatement
         arrOperatorPrecedence(intOperatorsUnaryOnly) = New String() {"-", "+"} 'unary operarors
         arrOperatorPrecedence(5) = New String() {":"}
         arrOperatorPrecedence(intOperatorsUserDefined) = New String() {"%"}    'any operator that starts with '%' (including user-defined operators)
-        arrOperatorPrecedence(7) = New String() {"*", "/"}
-        arrOperatorPrecedence(8) = New String() {"+", "-"}
-        arrOperatorPrecedence(9) = New String() {"<", ">", "<>", "<=", ">=", "==", "!="}
-        arrOperatorPrecedence(10) = New String() {"!"}
-        arrOperatorPrecedence(11) = New String() {"&", "&&"}
-        arrOperatorPrecedence(12) = New String() {"|", "||"}
+        arrOperatorPrecedence(7) = New String() {"|>"}
+        arrOperatorPrecedence(8) = New String() {"*", "/"}
+        arrOperatorPrecedence(9) = New String() {"+", "-"}
+        arrOperatorPrecedence(10) = New String() {"<", ">", "<>", "<=", ">=", "==", "!="}
+        arrOperatorPrecedence(11) = New String() {"!"}
+        arrOperatorPrecedence(12) = New String() {"&", "&&"}
+        arrOperatorPrecedence(13) = New String() {"|", "||"}
         arrOperatorPrecedence(intOperatorsTilda) = New String() {"~"}          'unary or binary
         arrOperatorPrecedence(intOperatorsRightAssignment) = New String() {"->", "->>"}
         arrOperatorPrecedence(intOperatorsLeftAssignment1) = New String() {"<-", "<<-"}
@@ -173,30 +174,37 @@ Public Class clsRStatement
     '''                                                 'pkg::obj1$obj2$fn1(a, b =1, c = 2)'</item>
     ''' </list></summary>
     '''
+    ''' <param name="bIncludeFormatting">   If True, then include all formatting information in 
+    '''     returned string (comments, indents, padding spaces, extra line breaks etc.). </param>
+    '''
     ''' <returns>   The current state of this object as a valid, executable R statement. </returns>
     '''--------------------------------------------------------------------------------------------
-    Public Function GetAsExecutableScript() As String
+    Public Function GetAsExecutableScript(Optional bIncludeFormatting As Boolean = True) As String
         Dim strScript As String
-        Dim strElement As String = GetScriptElement(clsElement)
+        Dim strElement As String = GetScriptElement(clsElement, bIncludeFormatting)
         'if there is no assignment, then just process the statement's element
         If IsNothing(clsAssignment) OrElse String.IsNullOrEmpty(strAssignmentOperator) Then
             strScript = strElement
         Else 'else if the statement has an assignment
-            Dim strAssigment As String = GetScriptElement(clsAssignment)
+            Dim strAssignment As String = GetScriptElement(clsAssignment, bIncludeFormatting)
+            Dim strAssignmentPrefixTmp = If(bIncludeFormatting, strAssignmentPrefix, "")
             'if the statement has a left assignment (e.g. 'x<-value', 'x<<-value' or 'x=value')
             If arrOperatorPrecedence(intOperatorsLeftAssignment1).Contains(strAssignmentOperator) OrElse
                 arrOperatorPrecedence(intOperatorsLeftAssignment2).Contains(strAssignmentOperator) Then
-                strScript = strAssigment & strAssignmentPrefix & strAssignmentOperator & strElement
+                strScript = strAssignment & strAssignmentPrefixTmp & strAssignmentOperator & strElement
             ElseIf arrOperatorPrecedence(intOperatorsRightAssignment).Contains(strAssignmentOperator) Then
                 'else if the statement has a right assignment (e.g. 'value->x' or 'value->>x')
-                strScript = strElement & strAssignmentPrefix & strAssignmentOperator & strAssigment
+                strScript = strElement & strAssignmentPrefixTmp & strAssignmentOperator & strAssignment
             Else
                 Throw New Exception("The statement's assignment operator is an unknown type.")
             End If
         End If
 
-        strScript &= strSuffix
-        strScript &= If(bTerminateWithNewline, vbLf, ";")
+        If bIncludeFormatting Then
+            strScript &= strSuffix
+            strScript &= If(bTerminateWithNewline, vbLf, ";")
+        End If
+
         Return strScript
     End Function
 
@@ -207,39 +215,44 @@ Public Class clsRStatement
     '''                             The R element may be a function, operator, constant, 
     '''                             syntactic name, key word etc. </param>
     '''
+    ''' <param name="bIncludeFormatting">   If True, then include all formatting information in 
+    '''     returned string (comments, indents, padding spaces, extra line breaks etc.). </param>
+    '''
     ''' <returns>   <paramref name="clsElement"/> as an executable R script. </returns>
     '''--------------------------------------------------------------------------------------------
-    Private Function GetScriptElement(clsElement As Object) As String
+    Private Function GetScriptElement(clsElement As Object, Optional bIncludeFormatting As Boolean = True) As String
 
         If IsNothing(clsElement) Then
             Return ""
         End If
 
         Dim strScript As String = ""
+        Dim strElementPrefix As String = If(bIncludeFormatting, clsElement.strPrefix, "")
         strScript &= If(clsElement.bBracketed, "(", "")
 
         Select Case clsElement.GetType()
             Case GetType(clsRElementFunction)
-                strScript &= GetScriptElementProperty(clsElement)
+                strScript &= GetScriptElementProperty(clsElement, bIncludeFormatting)
                 strScript &= "("
                 If Not IsNothing(clsElement.lstParameters) Then
                     Dim bPrefixComma As Boolean = False
                     For Each clsRParameter In clsElement.lstParameters
                         strScript &= If(bPrefixComma, ",", "")
                         bPrefixComma = True
-                        strScript &= If(String.IsNullOrEmpty(clsRParameter.strArgName), "", clsRParameter.strPrefix & clsRParameter.strArgName + " =")
-                        strScript &= GetScriptElement(clsRParameter.clsArgValue)
+                        Dim strParameterPrefix As String = If(bIncludeFormatting, clsRParameter.strPrefix, "")
+                        strScript &= If(String.IsNullOrEmpty(clsRParameter.strArgName), "", strParameterPrefix & clsRParameter.strArgName + " =")
+                        strScript &= GetScriptElement(clsRParameter.clsArgValue, bIncludeFormatting)
                     Next
                 End If
                 strScript &= ")"
             Case GetType(clsRElementProperty)
-                strScript &= GetScriptElementProperty(clsElement)
+                strScript &= GetScriptElementProperty(clsElement, bIncludeFormatting)
             Case GetType(clsRElementOperator)
                 Dim bPrefixOperator As Boolean = clsElement.bFirstParamOnRight
                 For Each clsRParameter In clsElement.lstParameters
-                    strScript &= If(bPrefixOperator, clsElement.strPrefix & clsElement.strTxt, "")
+                    strScript &= If(bPrefixOperator, strElementPrefix & clsElement.strTxt, "")
                     bPrefixOperator = True
-                    strScript &= GetScriptElement(clsRParameter.clsArgValue)
+                    strScript &= GetScriptElement(clsRParameter.clsArgValue, bIncludeFormatting)
                 Next
 
                 Select Case clsElement.strTxt
@@ -248,12 +261,12 @@ Public Class clsRStatement
                     Case "[["
                         strScript &= "]]"
                     Case Else
-                        strScript &= If(clsElement.lstParameters.Count = 1 AndAlso Not clsElement.bFirstParamOnRight, clsElement.strPrefix & clsElement.strTxt, "")
+                        strScript &= If(clsElement.lstParameters.Count = 1 AndAlso Not clsElement.bFirstParamOnRight, strElementPrefix & clsElement.strTxt, "")
                 End Select
 
             Case GetType(clsRElementKeyWord) 'TODO add key word functionality
             Case GetType(clsRElement), GetType(clsRElementAssignable)
-                strScript &= clsElement.strPrefix & clsElement.strTxt
+                strScript &= strElementPrefix & clsElement.strTxt
         End Select
         strScript &= If(clsElement.bBracketed, ")", "")
         Return strScript
@@ -266,13 +279,17 @@ Public Class clsRStatement
     '''                             may have an associated package name, and a list of associated 
     '''                             objects e.g. 'pkg::obj1$obj2$fn1(a)'. </param>
     '''
+    ''' <param name="bIncludeFormatting">   If True, then include all formatting information in 
+    '''     returned string (comments, indents, padding spaces, extra line breaks etc.). </param>
+    '''
     ''' <returns>   <paramref name="clsElement"/> as an executable R script. </returns>
     '''--------------------------------------------------------------------------------------------
-    Private Function GetScriptElementProperty(clsElement As clsRElementProperty) As String
-        Dim strScript As String = clsElement.strPrefix & If(String.IsNullOrEmpty(clsElement.strPackageName), "", clsElement.strPackageName & "::")
+    Private Function GetScriptElementProperty(clsElement As clsRElementProperty, Optional bIncludeFormatting As Boolean = True) As String
+        Dim strScript As String = If(bIncludeFormatting, clsElement.strPrefix, "") &
+                                  If(String.IsNullOrEmpty(clsElement.strPackageName), "", clsElement.strPackageName & "::")
         If Not IsNothing(clsElement.lstObjects) AndAlso clsElement.lstObjects.Count > 0 Then
             For Each clsObject In clsElement.lstObjects
-                strScript &= GetScriptElement(clsObject)
+                strScript &= GetScriptElement(clsObject, bIncludeFormatting)
                 strScript &= "$"
             Next
         End If

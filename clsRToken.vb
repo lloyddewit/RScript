@@ -26,6 +26,9 @@ Public Class clsRToken
     ''' <summary>   The lexeme associated with the token. </summary>
     Public strTxt As String
 
+    ''' <summary>   The position of the lexeme in the script from which the lexeme was extracted. </summary>
+    Public iScriptPos As UInteger
+
     ''' <summary>   The token type (function name, key word, comment etc.).  </summary>
     Public enuToken As typToken
 
@@ -63,20 +66,24 @@ Public Class clsRToken
     '''     operator.</para>
     ''' </summary>
     '''
-    ''' <param name="strLexemePrev">    The non-space lexeme immediately to the left of
-    '''                                 <paramref name="strLexemeCurrent"/>. </param>
-    ''' <param name="strLexemeCurrent"> The lexeme to convert to a token. </param>
-    ''' <param name="strLexemeNext">    The non-space lexeme immediately to the right of
-    '''                                 <paramref name="strLexemeCurrent"/>. </param>
+    ''' <param name="strLexemePrev">         The non-space lexeme immediately to the left of
+    '''                                      <paramref name="strLexemeCurrent"/>. </param>
+    ''' <param name="strLexemeCurrent">      The lexeme to convert to a token. </param>
+    ''' <param name="strLexemeNext">         The non-space lexeme immediately to the right of
+    '''                                      <paramref name="strLexemeCurrent"/>. </param>
+    ''' <param name="bLexemeNextOnSameLine"> True if <paramref name="strLexemeNext"/> is on the 
+    '''                                      same line as <paramref name="strLexemeCurrent"/>. </param>
     '''
     '''--------------------------------------------------------------------------------------------
-    Public Sub New(strLexemePrev As String, strLexemeCurrent As String, strLexemeNext As String, bLexemeNextOnSameLine As Boolean)
+    Public Sub New(strLexemePrev As String, strLexemeCurrent As String, strLexemeNext As String,
+                   bLexemeNextOnSameLine As Boolean, iScriptPosNew As UInteger)
         'TODO refactor so that strLexemePrev and strLexemeNext are booleans rather than strings?
         If String.IsNullOrEmpty(strLexemeCurrent) Then
             Exit Sub
         End If
 
         strTxt = strLexemeCurrent
+        iScriptPos = iScriptPosNew
 
         If IsKeyWord(strLexemeCurrent) Then                   'reserved key word (e.g. if, else etc.)
             enuToken = clsRToken.typToken.RKeyWord
@@ -326,7 +333,7 @@ Public Class clsRToken
     Public Shared Function IsOperatorReserved(strTxt As String) As Boolean 'TODO make private?
         Dim arrROperators() As String = {"::", ":::", "$", "@", "^", ":", "%%", "%/%",
         "%*%", "%o%", "%x%", "%in%", "/", "*", "+", "-", "<", ">", "<=", ">=", "==", "!=", "!", "&",
-        "&&", "|", "||", "~", "->", "->>", "<-", "<<-", "="}
+        "&&", "|", "||", "|>", "~", "->", "->>", "<-", "<<-", "="}
         Return arrROperators.Contains(strTxt)
     End Function
 
