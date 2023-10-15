@@ -14,7 +14,7 @@
       <FileName>clsRScript.vb</FileName>
     </TypeIdentifier>
   </Class>
-  <Class Name="RScript.clsRElement">
+  <Class Name="RScript.clsRElement" Collapsed="true">
     <Position X="5.25" Y="0.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAgAAAAAAgAAAAQAAAAAAAAAAAAAAIAAAAAAAAAAAAA=</HashCode>
@@ -66,14 +66,14 @@
       </Enum>
     </NestedTypes>
     <TypeIdentifier>
-      <HashCode>AAiAAAAKAwAAAAAAIAAAIAAECAAAAAAJIAAAAACADAA=</HashCode>
+      <HashCode>AAiAAAAKAwAAAAAAIAAAIAAECAAAAAAJIAAAAACADBA=</HashCode>
       <FileName>clsRToken.vb</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="RScript.clsRStatement">
     <Position X="2.25" Y="0.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>AAARBAIhEAAMQAAAAABAA4QwAAAACAKEACAEAAACAjA=</HashCode>
+      <HashCode>AAARBAIhEAAMQAAAAABAA4QwAAAACAKEAAAEAAACAjA=</HashCode>
       <FileName>clsRStatement.vb</FileName>
     </TypeIdentifier>
   </Class>
