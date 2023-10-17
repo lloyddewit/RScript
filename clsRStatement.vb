@@ -91,7 +91,7 @@ Public Class clsRStatement
 
         'create list of tokens for this statement
         Dim lstStatementTokens As List(Of clsRToken) = New List(Of clsRToken)
-        While (intPos < lstTokens.Count)
+        While intPos < lstTokens.Count
             lstStatementTokens.Add(lstTokens.Item(intPos))
             If lstTokens.Item(intPos).enuToken = clsRToken.typToken.REndStatement OrElse 'we don't add this termination condition to the while statement 
                  lstTokens.Item(intPos).enuToken = clsRToken.typToken.REndScript Then    '    because we also want the token that terminates the statement 
@@ -105,8 +105,8 @@ Public Class clsRStatement
         Dim lstTokenPresentation As List(Of clsRToken) = GetLstPresentation(lstStatementTokens, 0)
         Dim lstTokenBrackets As List(Of clsRToken) = GetLstTokenBrackets(lstTokenPresentation, 0)
         Dim lstTokenFunctionBrackets As List(Of clsRToken) = GetLstTokenFunctionBrackets(lstTokenBrackets)
-        Dim lstTokenCommas As List(Of clsRToken) = GetLstTokenCommas(lstTokenFunctionBrackets, 0)
-        Dim lstTokenTree As List(Of clsRToken) = GetLstTokenOperators(lstTokenCommas)
+        Dim lstTokenFunctionCommas As List(Of clsRToken) = GetLstTokenFunctionCommas(lstTokenFunctionBrackets, 0)
+        Dim lstTokenTree As List(Of clsRToken) = GetLstTokenOperators(lstTokenFunctionCommas)
 
         'if the tree does not include at least one token, then raise development error
         If lstTokenTree.Count < 1 Then
@@ -248,22 +248,29 @@ Public Class clsRStatement
             Case GetType(clsRElementProperty)
                 strScript &= GetScriptElementProperty(clsElement, bIncludeFormatting)
             Case GetType(clsRElementOperator)
-                Dim bPrefixOperator As Boolean = clsElement.bFirstParamOnRight
-                For Each clsRParameter In clsElement.lstParameters
-                    strScript &= If(bPrefixOperator, strElementPrefix & clsElement.strTxt, "")
-                    bPrefixOperator = True
-                    strScript &= GetScriptElement(clsRParameter.clsArgValue, bIncludeFormatting)
-                Next
+                If clsElement.strTxt = "[" OrElse clsElement.strTxt = "[[" Then
+                    Dim bOperatorAppended As Boolean = False
+                    For Each clsRParameter In clsElement.lstParameters
+                        strScript &= GetScriptElement(clsRParameter.clsArgValue, bIncludeFormatting)
+                        strScript &= If(bOperatorAppended, "", strElementPrefix & clsElement.strTxt)
+                        bOperatorAppended = True
+                    Next
 
-                Select Case clsElement.strTxt
-                    Case "["
-                        strScript &= "]"
-                    Case "[["
-                        strScript &= "]]"
-                    Case Else
-                        strScript &= If(clsElement.lstParameters.Count = 1 AndAlso Not clsElement.bFirstParamOnRight, strElementPrefix & clsElement.strTxt, "")
-                End Select
-
+                    Select Case clsElement.strTxt
+                        Case "["
+                            strScript &= "]"
+                        Case "[["
+                            strScript &= "]]"
+                    End Select
+                Else
+                    Dim bPrefixOperator As Boolean = clsElement.bFirstParamOnRight
+                    For Each clsRParameter In clsElement.lstParameters
+                        strScript &= If(bPrefixOperator, strElementPrefix & clsElement.strTxt, "")
+                        bPrefixOperator = True
+                        strScript &= GetScriptElement(clsRParameter.clsArgValue, bIncludeFormatting)
+                    Next
+                    strScript &= If(clsElement.lstParameters.Count = 1 AndAlso Not clsElement.bFirstParamOnRight, strElementPrefix & clsElement.strTxt, "")
+                End If
             Case GetType(clsRElementKeyWord) 'TODO add key word functionality
             Case GetType(clsRElement), GetType(clsRElementAssignable)
                 strScript &= strElementPrefix & clsElement.strTxt
@@ -336,7 +343,7 @@ Public Class clsRStatement
         Dim clsToken As clsRToken
         Dim strPrefix As String = ""
 
-        While (intPos < lstTokens.Count)
+        While intPos < lstTokens.Count
             clsToken = lstTokens.Item(intPos)
             intPos += 1
             Select Case clsToken.enuToken
@@ -393,7 +400,7 @@ Public Class clsRStatement
 
         Dim lstTokensNew As List(Of clsRToken) = New List(Of clsRToken)
         Dim clsToken As clsRToken
-        While (intPos < lstTokens.Count)
+        While intPos < lstTokens.Count
             clsToken = lstTokens.Item(intPos)
             intPos += 1
             Select Case clsToken.strTxt
@@ -432,7 +439,7 @@ Public Class clsRStatement
         Dim lstTokensNew As List(Of clsRToken) = New List(Of clsRToken)
         Dim clsToken As clsRToken
         Dim intPos As Integer = 0
-        While (intPos < lstTokens.Count)
+        While intPos < lstTokens.Count
             clsToken = lstTokens.Item(intPos)
 
             If clsToken.enuToken = clsRToken.typToken.RFunctionName Then
@@ -454,48 +461,55 @@ Public Class clsRStatement
 
     '''--------------------------------------------------------------------------------------------
     ''' <summary>
-    ''' Traverses the tree of tokens in <paramref name="lstTokens"/>. If the token is a ',' then it 
-    ''' makes everything up to the next ',' or ')' a child of the ',' token. Commas are used to 
-    ''' separate function parameters. Parameters between commas are optional. For example, 
-    ''' 'myFunction(a,,b)' is structured as: <code>
-    '''   myFunction (<para>
-    '''   ..a</para><para>
-    '''   ..,</para><para>
-    '''   ..,</para><para>
-    '''   ....b</para><para>
-    '''   ....)</para></code>
+    ''' Traverses the tree of tokens in <paramref name="lstTokens"/>. If the token is a ',' that 
+    ''' separates function parameters, then it makes everything up to the next ',' or ')' a child 
+    ''' of the ',' token. Parameters between function commas are optional. For example, 
+    ''' `myFunction(a,,b)` is structured as: <code>
+    '''   myFunction<para>
+    '''   ..(</para><para>
+    '''   ....a</para><para>
+    '''   ....,</para><para>
+    '''   ....,</para><para>
+    '''   ......b</para><para>
+    '''   ......)</para></code>
+    ''' Commas used within square brackets (e.g. `a[b,c]`, `a[b,]` etc.) are ignored.
     ''' </summary>
     '''
     ''' <param name="lstTokens">        The token tree to restructure. </param>
     ''' <param name="intPos">           [in,out] The position in the list to start processing. </param>
-    ''' <param name="bProcessingComma"> (Optional) True to processing comma. </param>
+    ''' <param name="bProcessingComma"> (Optional) True if function called when already processing 
+    '''     a comma (prevents commas being nested inside each other). </param>
     '''
     ''' <returns>   A token tree restructured for function commas. </returns>
     '''--------------------------------------------------------------------------------------------
-    Private Function GetLstTokenCommas(lstTokens As List(Of clsRToken),
+    Private Function GetLstTokenFunctionCommas(lstTokens As List(Of clsRToken),
                                        ByRef intPos As Integer,
                                        Optional bProcessingComma As Boolean = False) As List(Of clsRToken)
         Dim lstTokensNew As List(Of clsRToken) = New List(Of clsRToken)
         Dim clsToken As clsRToken
-        While (intPos < lstTokens.Count)
+        Dim lstOpenBrackets As New List(Of String) From {"[", "[["}
+        Dim lstCloseBrackets As New List(Of String) From {"]", "]]"}
+        Dim iNumOpenBrackets As Integer = 0
+
+        While intPos < lstTokens.Count
             clsToken = lstTokens.Item(intPos)
-            Select Case clsToken.strTxt
-                Case ","
-                    If bProcessingComma Then
-                        intPos -= 1  'ensure this comma is processed in the level above
-                        Return lstTokensNew
-                    Else
-                        intPos += 1
-                        clsToken.lstTokens = clsToken.lstTokens.Concat(GetLstTokenCommas(lstTokens, intPos, True)).ToList()
-                    End If
-                Case ")"
-                    lstTokensNew.Add(clsToken)
+
+            'only process commas that separate function parameters,
+            '    ignore commas inside square bracket (e.g. `a[b,c]`)
+            iNumOpenBrackets += If(lstOpenBrackets.Contains(clsToken.strTxt), 1, 0)
+            iNumOpenBrackets -= If(lstCloseBrackets.Contains(clsToken.strTxt), 1, 0)
+            If iNumOpenBrackets = 0 AndAlso clsToken.strTxt = "," Then
+                If bProcessingComma Then
+                    intPos -= 1  'ensure this comma is processed in the level above
                     Return lstTokensNew
-                Case Else
-                    If clsToken.lstTokens.Count > 0 Then
-                        clsToken.lstTokens = GetLstTokenCommas(clsToken.CloneMe.lstTokens, 0)
-                    End If
-            End Select
+                Else
+                    intPos += 1
+                    clsToken.lstTokens = clsToken.lstTokens.Concat(GetLstTokenFunctionCommas(lstTokens, intPos, True)).ToList()
+                End If
+            Else
+                clsToken.lstTokens = GetLstTokenFunctionCommas(clsToken.CloneMe.lstTokens, 0)
+            End If
+
             lstTokensNew.Add(clsToken)
             intPos += 1
         End While
@@ -573,7 +587,7 @@ Public Class clsRStatement
         Dim bPrevTokenProcessed As Boolean = False
 
         Dim intPosTokens As Integer = 0
-        While (intPosTokens < lstTokens.Count)
+        While intPosTokens < lstTokens.Count
             clsToken = lstTokens.Item(intPosTokens).CloneMe
 
             'if the token is the operator we are looking for and it has not been processed already
@@ -802,7 +816,7 @@ Public Class clsRStatement
                 clsOperator.lstParameters.Add(GetRParameter(clsToken.lstTokens.Item(clsToken.lstTokens.Count - 1), dctAssignments))
                 Return clsOperator
 
-            Case clsRToken.typToken.ROperatorBinary, clsRToken.typToken.ROperatorBracket
+            Case clsRToken.typToken.ROperatorBinary
                 If clsToken.lstTokens.Count < 2 Then
                     Throw New Exception("Binary operator token has " & clsToken.lstTokens.Count &
                                             " children. A binary operator must have at least 2 children (plus an optional presentation child).")
@@ -856,6 +870,20 @@ Public Class clsRStatement
                         Return clsOperator
                 End Select
 
+            Case clsRToken.typToken.ROperatorBracket
+                If clsToken.lstTokens.Count < 1 Then
+                    Throw New Exception("Square bracket operator token has no children. A binary " _
+                                        & "operator must have at least 1 child (plus an optional " _
+                                        & "presentation child).")
+                End If
+
+                Dim clsBracketOperator As New clsRElementOperator(clsToken, bBracketedNew)
+                Dim startPos As Integer = If(clsToken.lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation, 1, 0)
+                For intPos As Integer = startPos To clsToken.lstTokens.Count - 1
+                    clsBracketOperator.lstParameters.Add(GetRParameter(clsToken.lstTokens.Item(intPos), dctAssignments))
+                Next
+                Return clsBracketOperator
+
             Case clsRToken.typToken.RSyntacticName, clsRToken.typToken.RConstantString
                 'if element has a package name or object list, then return a property element
                 If Not String.IsNullOrEmpty(strPackageName) OrElse Not IsNothing(lstObjects) Then
@@ -869,6 +897,10 @@ Public Class clsRStatement
                 End If
 
                 'else just return a regular element
+                Return New clsRElement(clsToken, bBracketedNew)
+
+            Case clsRToken.typToken.RSeparator 'a comma within a square bracket, e.g. `a[b,c]`
+                'just return a regular element
                 Return New clsRElement(clsToken, bBracketedNew)
 
             Case clsRToken.typToken.RPresentation, clsRToken.typToken.REndStatement
