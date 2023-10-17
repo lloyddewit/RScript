@@ -13,7 +13,7 @@ Imports System.Runtime.InteropServices
 <Assembly: AssemblyDescription("Creates an object model which represents a valid R script")>
 <Assembly: AssemblyCompany("IDEMS International")>
 <Assembly: AssemblyProduct("RScript")>
-<Assembly: AssemblyCopyright("Copyright ©  2022")>
+<Assembly: AssemblyCopyright("Copyright ©  2023")>
 <Assembly: AssemblyTrademark("")>
 
 <Assembly: ComVisible(False)>
@@ -32,6 +32,6 @@ Imports System.Runtime.InteropServices
 ' by using the '*' as shown below:
 ' <Assembly: AssemblyVersion("1.0.*")>
 
-<Assembly: AssemblyVersion("0.1.0.7")>
-<Assembly: AssemblyFileVersion("0.1.0.7")>
+<Assembly: AssemblyVersion("0.1.0.8")>
+<Assembly: AssemblyFileVersion("0.1.0.8")>
 <Assembly: NeutralResourcesLanguage("en")>
