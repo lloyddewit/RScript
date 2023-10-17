@@ -872,8 +872,9 @@ Public Class clsRStatement
 
             Case clsRToken.typToken.ROperatorBracket
                 If clsToken.lstTokens.Count < 1 Then
-                    Throw New Exception("Square bracket operator token has " & clsToken.lstTokens.Count &
-                                            " children. A binary operator must have at least 1 child (plus an optional presentation child).")
+                    Throw New Exception("Square bracket operator token has no children. A binary " _
+                                        & "operator must have at least 1 child (plus an optional " _
+                                        & "presentation child).")
                 End If
 
                 Dim clsBracketOperator As New clsRElementOperator(clsToken, bBracketedNew)
