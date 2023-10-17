@@ -461,21 +461,24 @@ Public Class clsRStatement
 
     '''--------------------------------------------------------------------------------------------
     ''' <summary>
-    ''' TODO Traverses the tree of tokens in <paramref name="lstTokens"/>. If the token is a ',' then it 
-    ''' makes everything up to the next ',' or ')' a child of the ',' token. Commas are used to 
-    ''' separate function parameters. Parameters between commas are optional. For example, 
-    ''' 'myFunction(a,,b)' is structured as: <code>
-    '''   myFunction (<para>
-    '''   ..a</para><para>
-    '''   ..,</para><para>
-    '''   ..,</para><para>
-    '''   ....b</para><para>
-    '''   ....)</para></code>
+    ''' Traverses the tree of tokens in <paramref name="lstTokens"/>. If the token is a ',' that 
+    ''' separates function parameters, then it makes everything up to the next ',' or ')' a child 
+    ''' of the ',' token. Parameters between function commas are optional. For example, 
+    ''' `myFunction(a,,b)` is structured as: <code>
+    '''   myFunction<para>
+    '''   ..(</para><para>
+    '''   ....a</para><para>
+    '''   ....,</para><para>
+    '''   ....,</para><para>
+    '''   ......b</para><para>
+    '''   ......)</para></code>
+    ''' Commas used within square brackets (e.g. `a[b,c]`, `a[b,]` etc.) are ignored.
     ''' </summary>
     '''
     ''' <param name="lstTokens">        The token tree to restructure. </param>
     ''' <param name="intPos">           [in,out] The position in the list to start processing. </param>
-    ''' <param name="bProcessingComma"> (Optional) True to processing comma TODO. </param>
+    ''' <param name="bProcessingComma"> (Optional) True if function called when already processing 
+    '''     a comma (prevents commas being nested inside each other). </param>
     '''
     ''' <returns>   A token tree restructured for function commas. </returns>
     '''--------------------------------------------------------------------------------------------
