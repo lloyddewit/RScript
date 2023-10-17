@@ -461,7 +461,7 @@ Public Class clsRStatement
 
     '''--------------------------------------------------------------------------------------------
     ''' <summary>
-    ''' Traverses the tree of tokens in <paramref name="lstTokens"/>. If the token is a ',' then it 
+    ''' TODO Traverses the tree of tokens in <paramref name="lstTokens"/>. If the token is a ',' then it 
     ''' makes everything up to the next ',' or ')' a child of the ',' token. Commas are used to 
     ''' separate function parameters. Parameters between commas are optional. For example, 
     ''' 'myFunction(a,,b)' is structured as: <code>
@@ -475,41 +475,38 @@ Public Class clsRStatement
     '''
     ''' <param name="lstTokens">        The token tree to restructure. </param>
     ''' <param name="intPos">           [in,out] The position in the list to start processing. </param>
-    ''' <param name="bProcessingComma"> (Optional) True to processing comma. </param>
+    ''' <param name="bProcessingComma"> (Optional) True to processing comma TODO. </param>
     '''
     ''' <returns>   A token tree restructured for function commas. </returns>
     '''--------------------------------------------------------------------------------------------
     Private Function GetLstTokenFunctionCommas(lstTokens As List(Of clsRToken),
                                        ByRef intPos As Integer,
-                                       Optional bProcessingComma As Boolean = False,
-                                       Optional bCommasAreFnParams As Boolean = False) As List(Of clsRToken)
+                                       Optional bProcessingComma As Boolean = False) As List(Of clsRToken)
         Dim lstTokensNew As List(Of clsRToken) = New List(Of clsRToken)
         Dim clsToken As clsRToken
+        Dim lstOpenBrackets As New List(Of String) From {"[", "[["}
+        Dim lstCloseBrackets As New List(Of String) From {"]", "]]"}
+        Dim iNumOpenBrackets As Integer = 0
+
         While intPos < lstTokens.Count
             clsToken = lstTokens.Item(intPos)
-            If bCommasAreFnParams Then
-                Select Case clsToken.strTxt
-                    Case ","
-                        If bProcessingComma Then
-                            intPos -= 1  'ensure this comma is processed in the level above
-                            Return lstTokensNew
-                        Else
-                            intPos += 1
-                            clsToken.lstTokens = clsToken.lstTokens.Concat(GetLstTokenFunctionCommas(lstTokens, intPos, True, True)).ToList()
-                        End If
-                    Case ")"
-                        lstTokensNew.Add(clsToken)
-                        Return lstTokensNew
-                    Case Else
-                        If clsToken.lstTokens.Count > 0 Then
-                            clsToken.lstTokens = GetLstTokenFunctionCommas(clsToken.CloneMe.lstTokens, 0)
-                        End If
-                End Select
-            Else
-                If clsToken.lstTokens.Count > 0 Then
-                    clsToken.lstTokens = GetLstTokenFunctionCommas(clsToken.CloneMe.lstTokens, 0, bCommasAreFnParams:=clsToken.strTxt = "(")
+
+            'only process commas that separate function parameters,
+            '    ignore commas inside square bracket (e.g. `a[b,c]`)
+            iNumOpenBrackets += If(lstOpenBrackets.Contains(clsToken.strTxt), 1, 0)
+            iNumOpenBrackets -= If(lstCloseBrackets.Contains(clsToken.strTxt), 1, 0)
+            If iNumOpenBrackets = 0 AndAlso clsToken.strTxt = "," Then
+                If bProcessingComma Then
+                    intPos -= 1  'ensure this comma is processed in the level above
+                    Return lstTokensNew
+                Else
+                    intPos += 1
+                    clsToken.lstTokens = clsToken.lstTokens.Concat(GetLstTokenFunctionCommas(lstTokens, intPos, True)).ToList()
                 End If
+            Else
+                clsToken.lstTokens = GetLstTokenFunctionCommas(clsToken.CloneMe.lstTokens, 0)
             End If
+
             lstTokensNew.Add(clsToken)
             intPos += 1
         End While
