@@ -904,8 +904,8 @@ Public Class clsRStatement
                 Return New clsRElement(clsToken, bBracketedNew)
 
             Case clsRToken.typToken.RPresentation, clsRToken.typToken.REndStatement
-                'if token can't be used to generate an R element then ignore
-                Return Nothing
+                'just return a regular element
+                Return New clsRElement(clsToken, bBracketedNew)
 
             Case Else
                 Throw New Exception("The token has an unexpected type.")
