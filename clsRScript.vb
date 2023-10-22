@@ -315,21 +315,8 @@ Public Class clsRScript
             lstRTokens.Add(clsToken)
 
             'Edge case: if the script has ended and there are no more R elements to process, 
-            'then return the token list.
-            ' 
-            'Note: Any formatting lexemes (i.e. spaces, comments or extra newlines), after the 
-            'script's final statement, will not be added to the token list.
-            'For example, for the script below, '#comment1' will be added to the token list but 
-            ''#comment2' will not:
-            '      
-            '    a <- 1
-            '    b <- a * 2 #comment1
-            '    #comment2
-            '          
-            'This was a deliberate design decision. Spaces, comments or extra newlines at the end 
-            'of a script serve no practical purpose and are rarely used.
-            'However storing these extra formatting lexemes would increase source code complexity.
-            'TODO
+            'then ensure that only formatting lexemes (i.e. spaces, newlines or comments) follow
+            'the script's final statement.
             If clsToken.enuToken = clsRToken.typToken.REndScript AndAlso
                     String.IsNullOrEmpty(strLexemeNext) Then
 
@@ -341,7 +328,7 @@ Public Class clsRScript
                     iScriptPos += strLexemeCurrent.Length
 
                     Select Case clsToken.enuToken
-                        Case clsRToken.typToken.RComment, clsRToken.typToken.RSpace, clsRToken.typToken.RNewLine
+                        Case clsRToken.typToken.RSpace, clsRToken.typToken.RNewLine, clsRToken.typToken.RComment
                         Case Else
                             Throw New Exception("Only spaces, comments and newlines are allowed after the script ends.")
                     End Select
