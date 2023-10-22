@@ -149,10 +149,15 @@ Public Class clsRStatement
         End If
 
         'store any remaining presentation data
-        strSuffix = If(Not IsNothing(clsElement) AndAlso
-                       clsTokenEndStatement.lstTokens.Count > 0 AndAlso
+        'TODO
+        strSuffix = If(clsTokenEndStatement.lstTokens.Count > 0 AndAlso
                        clsTokenEndStatement.lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation,
                        clsTokenEndStatement.lstTokens.Item(0).strTxt, "")
+        strSuffix = If(strSuffix.EndsWith(vbLf), strSuffix.Substring(0, strSuffix.Length - 1), strSuffix)
+        'strSuffix = If(Not IsNothing(clsElement) AndAlso
+        '               clsTokenEndStatement.lstTokens.Count > 0 AndAlso
+        '               clsTokenEndStatement.lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation,
+        '               clsTokenEndStatement.lstTokens.Item(0).strTxt, "")
 
     End Sub
 
@@ -903,8 +908,15 @@ Public Class clsRStatement
                 'just return a regular element
                 Return New clsRElement(clsToken, bBracketedNew)
 
-            Case clsRToken.typToken.RPresentation, clsRToken.typToken.REndStatement
-                'if token can't be used to generate an R element then ignore
+            'Case clsRToken.typToken.RPresentation, clsRToken.typToken.REndStatement
+            '    'if token can't be used to generate an R element then ignore
+            '    Return Nothing
+
+            Case clsRToken.typToken.REndStatement
+                'TODO
+                'If clsToken.lstTokens.Count > 0 AndAlso clsToken.lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation Then
+                '    Return New clsRElement(clsToken.lstTokens.Item(0), bBracketedNew)
+                'End If
                 Return Nothing
 
             Case Else
