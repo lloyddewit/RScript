@@ -183,7 +183,7 @@ Public Class clsRScript
 
         Dim iScriptPos As UInteger = 0
 
-        For intPos As Integer = 0 To lstLexemes.Count - 1
+        For iPos As Integer = 0 To lstLexemes.Count - 1
 
             If stkNumOpenBrackets.Count < 1 Then
                 Throw New Exception("The stack storing the number of open brackets must have at least one value.")
@@ -198,22 +198,22 @@ Public Class clsRScript
                 strLexemePrev = strLexemeCurrent
             End If
 
-            strLexemeCurrent = lstLexemes.Item(intPos)
+            strLexemeCurrent = lstLexemes.Item(iPos)
             bStatementContainsElement = If(bStatementContainsElement, bStatementContainsElement, clsRToken.IsElement(strLexemeCurrent))
 
             'find next lexeme that represents an R element
             strLexemeNext = Nothing
             bLexemeNextOnSameLine = True
-            For intNextPos As Integer = intPos + 1 To lstLexemes.Count - 1
-                If clsRToken.IsElement(lstLexemes.Item(intNextPos)) Then
-                    strLexemeNext = lstLexemes.Item(intNextPos)
+            For iNextPos As Integer = iPos + 1 To lstLexemes.Count - 1
+                If clsRToken.IsElement(lstLexemes.Item(iNextPos)) Then
+                    strLexemeNext = lstLexemes.Item(iNextPos)
                     Exit For
                 End If
-                Select Case lstLexemes.Item(intNextPos)
+                Select Case lstLexemes.Item(iNextPos)
                     Case vbLf, vbCr, vbCr
                         bLexemeNextOnSameLine = False
                 End Select
-            Next intNextPos
+            Next iNextPos
 
             'determine whether the current sequence of tokens makes a complete valid R statement
             '    This is needed to determine whether a newline marks the end of the statement
@@ -315,25 +315,31 @@ Public Class clsRScript
             lstRTokens.Add(clsToken)
 
             'Edge case: if the script has ended and there are no more R elements to process, 
-            'then return the token list.
-            ' 
-            'Note: Any formatting lexemes (i.e. spaces, comments or extra newlines), after the 
-            'script's final statement, will not be added to the token list.
-            'For example, for the script below, '#comment1' will be added to the token list but 
-            ''#comment2' will not:
-            '      
-            '    a <- 1
-            '    b <- a * 2 #comment1
-            '    #comment2
-            '          
-            'This was a deliberate design decision. Spaces, comments or extra newlines at the end 
-            'of a script serve no practical purpose and are rarely used.
-            'However storing these extra formatting lexemes would increase source code complexity.
+            'then ensure that only formatting lexemes (i.e. spaces, newlines or comments) follow
+            'the script's final statement.
             If clsToken.enuToken = clsRToken.typToken.REndScript AndAlso
                     String.IsNullOrEmpty(strLexemeNext) Then
+
+                For iNextPos As Integer = iPos + 1 To lstLexemes.Count - 1
+
+                    strLexemeCurrent = lstLexemes.Item(iNextPos)
+
+                    clsToken = New clsRToken("", strLexemeCurrent, "", False, iScriptPos)
+                    iScriptPos += strLexemeCurrent.Length
+
+                    Select Case clsToken.enuToken
+                        Case clsRToken.typToken.RSpace, clsRToken.typToken.RNewLine, clsRToken.typToken.RComment
+                        Case Else
+                            Throw New Exception("Only spaces, newlines and comments are allowed after the script ends.")
+                    End Select
+
+                    'add new token to token list
+                    lstRTokens.Add(clsToken)
+
+                Next iNextPos
                 Return lstRTokens
             End If
-        Next intPos
+        Next iPos
 
         Return lstRTokens
     End Function
