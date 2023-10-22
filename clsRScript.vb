@@ -330,7 +330,7 @@ Public Class clsRScript
                     Select Case clsToken.enuToken
                         Case clsRToken.typToken.RSpace, clsRToken.typToken.RNewLine, clsRToken.typToken.RComment
                         Case Else
-                            Throw New Exception("Only spaces, comments and newlines are allowed after the script ends.")
+                            Throw New Exception("Only spaces, newlines and comments are allowed after the script ends.")
                     End Select
 
                     'add new token to token list
