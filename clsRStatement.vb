@@ -141,20 +141,19 @@ Public Class clsRStatement
             clsElement = GetRElement(lstTokenTree.Item(0), dctAssignments)
         End If
 
-        'check if the statement is terminated with a semi-colon
+        'if statement ends with a semicolon or newline
         Dim clsTokenEndStatement As clsRToken = lstTokenTree.Item(lstTokenTree.Count - 1)
-        If clsTokenEndStatement.enuToken = clsRToken.typToken.REndStatement AndAlso
-             clsTokenEndStatement.strTxt = ";" Then
-            bTerminateWithNewline = False
+        If clsTokenEndStatement.enuToken = clsRToken.typToken.REndStatement OrElse clsTokenEndStatement.enuToken = clsRToken.typToken.REndScript Then
+            If clsTokenEndStatement.strTxt = ";" Then
+                bTerminateWithNewline = False
+            Else 'store any remaining presentation data associated with the newline
+                strSuffix = If(clsTokenEndStatement.lstTokens.Count > 0 AndAlso
+                           clsTokenEndStatement.lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation,
+                           clsTokenEndStatement.lstTokens.Item(0).strTxt, "")
+                'do not include any trailing newlines
+                strSuffix = If(strSuffix.EndsWith(vbLf), strSuffix.Substring(0, strSuffix.Length - 1), strSuffix)
+            End If
         End If
-
-        'store any remaining presentation data
-        strSuffix = If(clsTokenEndStatement.lstTokens.Count > 0 AndAlso
-                       clsTokenEndStatement.lstTokens.Item(0).enuToken = clsRToken.typToken.RPresentation,
-                       clsTokenEndStatement.lstTokens.Item(0).strTxt, "")
-        'do not include any trailing new lines
-        strSuffix = If(strSuffix.EndsWith(vbLf), strSuffix.Substring(0, strSuffix.Length - 1), strSuffix)
-
     End Sub
 
     '''--------------------------------------------------------------------------------------------
