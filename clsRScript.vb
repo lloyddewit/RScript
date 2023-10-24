@@ -64,11 +64,11 @@ Public Class clsRScript
         Dim lstLexemes As List(Of String) = GetLstLexemes(strInput)
         Dim lstTokens As List(Of clsRToken) = GetLstTokens(lstLexemes)
 
-        Dim intPos As Integer = 0
+        Dim iPos As Integer = 0
         Dim dctAssignments As New Dictionary(Of String, clsRStatement)
-        While intPos < lstTokens.Count
-            Dim iScriptPos As UInteger = lstTokens.Item(intPos).iScriptPos
-            Dim clsStatement As clsRStatement = New clsRStatement(lstTokens, intPos, dctAssignments)
+        While iPos < lstTokens.Count
+            Dim iScriptPos As UInteger = lstTokens.Item(iPos).iScriptPos
+            Dim clsStatement As clsRStatement = New clsRStatement(lstTokens, iPos, dctAssignments)
             dctRStatements.Add(iScriptPos, clsStatement)
 
             'if the value of an assigned element is new/updated
