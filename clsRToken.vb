@@ -77,7 +77,6 @@ Public Class clsRToken
     '''--------------------------------------------------------------------------------------------
     Public Sub New(strLexemePrev As String, strLexemeCurrent As String, strLexemeNext As String,
                    bLexemeNextOnSameLine As Boolean, iScriptPosNew As UInteger)
-        'TODO refactor so that strLexemePrev and strLexemeNext are booleans rather than strings?
         If String.IsNullOrEmpty(strLexemeCurrent) Then
             Exit Sub
         End If
@@ -388,7 +387,7 @@ Public Class clsRToken
     ''' <returns>   True if <paramref name="strTxt"/> is a new line, else returns false.
     '''             </returns>
     '''--------------------------------------------------------------------------------------------
-    Private Shared Function IsNewLine(strTxt As String) As Boolean
+    Public Shared Function IsNewLine(strTxt As String) As Boolean
         Dim arrRNewLines() As String = {vbCr, vbLf, vbCrLf}
         Return arrRNewLines.Contains(strTxt)
     End Function

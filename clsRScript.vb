@@ -194,7 +194,8 @@ Public Class clsRScript
             End If
 
             'store previous non-space lexeme
-            If clsRToken.IsElement(strLexemeCurrent) Then
+            If clsRToken.IsElement(strLexemeCurrent) _
+                    OrElse clsRToken.IsNewLine(strLexemeCurrent) Then
                 strLexemePrev = strLexemeCurrent
             End If
 
