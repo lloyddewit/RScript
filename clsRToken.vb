@@ -76,7 +76,8 @@ Public Class clsRToken
     '''
     '''--------------------------------------------------------------------------------------------
     Public Sub New(strLexemePrev As String, strLexemeCurrent As String, strLexemeNext As String,
-                   bLexemeNextOnSameLine As Boolean, iScriptPosNew As UInteger)
+                   bLexemePrevOnSameLine As Boolean, bLexemeNextOnSameLine As Boolean,
+                   iScriptPosNew As UInteger)
         If String.IsNullOrEmpty(strLexemeCurrent) Then
             Exit Sub
         End If
@@ -114,7 +115,8 @@ Public Class clsRToken
             enuToken = clsRToken.typToken.ROperatorBracket
         ElseIf IsOperatorUnary(strLexemeCurrent) AndAlso      'unary right operator (e.g. '!x')
                 (String.IsNullOrEmpty(strLexemePrev) OrElse
-                Not Regex.IsMatch(strLexemePrev, "[a-zA-Z0-9_\.)\]]$")) Then
+                 Not Regex.IsMatch(strLexemePrev, "[a-zA-Z0-9_\.)\]]$") OrElse
+                 Not bLexemePrevOnSameLine) Then
             enuToken = clsRToken.typToken.ROperatorUnaryRight
         ElseIf strLexemeCurrent = "~" AndAlso                 'unary left operator (e.g. x~)
                 (String.IsNullOrEmpty(strLexemeNext) OrElse
