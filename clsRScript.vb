@@ -168,6 +168,7 @@ Public Class clsRScript
         Dim strLexemePrev As String = ""
         Dim strLexemeCurrent As String = ""
         Dim strLexemeNext As String
+        Dim bLexemePrevOnSameLine As Boolean = False
         Dim bLexemeNextOnSameLine As Boolean
         Dim bStatementContainsElement As Boolean = False
         Dim clsToken As clsRToken
@@ -196,6 +197,9 @@ Public Class clsRScript
             'store previous non-space lexeme
             If clsRToken.IsElement(strLexemeCurrent) Then
                 strLexemePrev = strLexemeCurrent
+                bLexemePrevOnSameLine = True
+            ElseIf clsRToken.IsNewLine(strLexemeCurrent) Then
+                bLexemePrevOnSameLine = False
             End If
 
             strLexemeCurrent = lstLexemes.Item(iPos)
@@ -234,7 +238,7 @@ Public Class clsRScript
             End Select
 
             'identify the token associated with the current lexeme and add the token to the list
-            clsToken = New clsRToken(strLexemePrev, strLexemeCurrent, strLexemeNext, bLexemeNextOnSameLine, iScriptPos)
+            clsToken = New clsRToken(strLexemePrev, strLexemeCurrent, strLexemeNext, bLexemePrevOnSameLine, bLexemeNextOnSameLine, iScriptPos)
             iScriptPos += strLexemeCurrent.Length
 
             'Process key words
@@ -324,7 +328,7 @@ Public Class clsRScript
 
                     strLexemeCurrent = lstLexemes.Item(iNextPos)
 
-                    clsToken = New clsRToken("", strLexemeCurrent, "", False, iScriptPos)
+                    clsToken = New clsRToken("", strLexemeCurrent, "", False, False, iScriptPos)
                     iScriptPos += strLexemeCurrent.Length
 
                     Select Case clsToken.enuToken

@@ -76,8 +76,8 @@ Public Class clsRToken
     '''
     '''--------------------------------------------------------------------------------------------
     Public Sub New(strLexemePrev As String, strLexemeCurrent As String, strLexemeNext As String,
-                   bLexemeNextOnSameLine As Boolean, iScriptPosNew As UInteger)
-        'TODO refactor so that strLexemePrev and strLexemeNext are booleans rather than strings?
+                   bLexemePrevOnSameLine As Boolean, bLexemeNextOnSameLine As Boolean,
+                   iScriptPosNew As UInteger)
         If String.IsNullOrEmpty(strLexemeCurrent) Then
             Exit Sub
         End If
@@ -115,7 +115,8 @@ Public Class clsRToken
             enuToken = clsRToken.typToken.ROperatorBracket
         ElseIf IsOperatorUnary(strLexemeCurrent) AndAlso      'unary right operator (e.g. '!x')
                 (String.IsNullOrEmpty(strLexemePrev) OrElse
-                Not Regex.IsMatch(strLexemePrev, "[a-zA-Z0-9_\.)\]]$")) Then
+                 Not Regex.IsMatch(strLexemePrev, "[a-zA-Z0-9_\.)\]]$") OrElse
+                 Not bLexemePrevOnSameLine) Then
             enuToken = clsRToken.typToken.ROperatorUnaryRight
         ElseIf strLexemeCurrent = "~" AndAlso                 'unary left operator (e.g. x~)
                 (String.IsNullOrEmpty(strLexemeNext) OrElse
@@ -388,7 +389,7 @@ Public Class clsRToken
     ''' <returns>   True if <paramref name="strTxt"/> is a new line, else returns false.
     '''             </returns>
     '''--------------------------------------------------------------------------------------------
-    Private Shared Function IsNewLine(strTxt As String) As Boolean
+    Public Shared Function IsNewLine(strTxt As String) As Boolean
         Dim arrRNewLines() As String = {vbCr, vbLf, vbCrLf}
         Return arrRNewLines.Contains(strTxt)
     End Function
