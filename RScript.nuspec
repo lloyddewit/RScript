@@ -2,13 +2,13 @@
 <package >
   <metadata>
     <id>$id$</id>
-    <version>1.0.9</version>
+    <version>1.0.10</version>
     <title>$title$</title>
     <authors>Stephen Lloyd</authors>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <license type="expression">GPL-3.0-or-later</license>
     <description>Creates an object model which represents a valid R script.</description>
-    <releaseNotes>Added support for comments at end of script.</releaseNotes>
+    <releaseNotes>Added support for question mark operator and ensured that unary operators worked correctly across line breaks.</releaseNotes>
     <copyright>$copyright$</copyright>
     <tags>R Statistics Statistical</tags>
   </metadata>
