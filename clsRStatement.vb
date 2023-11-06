@@ -88,7 +88,7 @@ Public Class clsRStatement
         arrOperatorPrecedence(iOperatorsRightAssignment) = New String() {"->", "->>"}
         arrOperatorPrecedence(iOperatorsLeftAssignment1) = New String() {"<-", "<<-"}
         arrOperatorPrecedence(iOperatorsLeftAssignment2) = New String() {"="}
-        arrOperatorPrecedence(18) = New String() {"?"}
+        arrOperatorPrecedence(18) = New String() {"?", "??"}
 
         'create list of tokens for this statement
         Dim lstStatementTokens As List(Of clsRToken) = New List(Of clsRToken)
