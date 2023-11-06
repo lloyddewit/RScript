@@ -334,7 +334,7 @@ Public Class clsRToken
     Public Shared Function IsOperatorReserved(strTxt As String) As Boolean 'TODO make private?
         Dim arrROperators() As String = {"::", ":::", "$", "@", "^", ":", "%%", "%/%",
         "%*%", "%o%", "%x%", "%in%", "/", "*", "+", "-", "<", ">", "<=", ">=", "==", "!=", "!", "&",
-        "&&", "|", "||", "|>", "~", "->", "->>", "<-", "<<-", "=", "?"}
+        "&&", "|", "||", "|>", "~", "->", "->>", "<-", "<<-", "=", "?", "??"}
         Return arrROperators.Contains(strTxt)
     End Function
 
@@ -362,7 +362,7 @@ Public Class clsRToken
     '''             </returns>
     '''--------------------------------------------------------------------------------------------
     Private Shared Function IsOperatorUnary(strTxt As String) As Boolean
-        Dim arrROperatorUnary() As String = {"+", "-", "!", "~", "?"}
+        Dim arrROperatorUnary() As String = {"+", "-", "!", "~", "?", "??"}
         Return arrROperatorUnary.Contains(strTxt)
     End Function
 
