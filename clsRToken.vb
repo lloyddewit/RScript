@@ -115,13 +115,14 @@ Public Class clsRToken
             enuToken = clsRToken.typToken.ROperatorBracket
         ElseIf IsOperatorUnary(strLexemeCurrent) AndAlso      'unary right operator (e.g. '!x')
                 (String.IsNullOrEmpty(strLexemePrev) OrElse
-                 Not Regex.IsMatch(strLexemePrev, "[a-zA-Z0-9_\.)\]]$") OrElse
+                 Not IsBinaryOperatorParameter(strLexemePrev) OrElse
                  Not bLexemePrevOnSameLine) Then
             enuToken = clsRToken.typToken.ROperatorUnaryRight
         ElseIf strLexemeCurrent = "~" AndAlso                 'unary left operator (e.g. x~)
                 (String.IsNullOrEmpty(strLexemeNext) OrElse
                 Not bLexemeNextOnSameLine OrElse
-                Not Regex.IsMatch(strLexemeNext, "^[a-zA-Z0-9_\.(\+\-\!~]")) Then
+                Not (Regex.IsMatch(strLexemeNext, "^[a-zA-Z0-9_\.(\+\-\!~]") _
+                     OrElse IsBinaryOperatorParameter(strLexemeNext))) Then
             enuToken = clsRToken.typToken.ROperatorUnaryLeft
         ElseIf IsOperatorReserved(strLexemeCurrent) OrElse    'binary operator (e.g. '+')
                 Regex.IsMatch(strLexemeCurrent, "^%.*%$") Then
@@ -207,6 +208,19 @@ Public Class clsRToken
         'if the string is not covered by any of the checks above, 
         '       then we assume by default, that it's not a valid lexeme
         Return False
+    End Function
+
+    '''--------------------------------------------------------------------------------------------
+    ''' <summary>   Returns true if <paramref name="strTxt"/> is a valid parameter for a binary 
+    '''             operator, else returns false.</summary>
+    '''
+    ''' <param name="strTxt">   The text to check. </param>
+    '''
+    ''' <returns>   True if <paramref name="strTxt"/> is a valid parameter for a binary operator, 
+    '''             else returns false.</returns>
+    '''--------------------------------------------------------------------------------------------
+    Private Function IsBinaryOperatorParameter(strTxt As String) As Boolean
+        Return Regex.IsMatch(strTxt, "[a-zA-Z0-9_\.)\]]$") OrElse IsConstantString(strTxt)
     End Function
 
     '''--------------------------------------------------------------------------------------------
@@ -315,7 +329,7 @@ Public Class clsRToken
     ''' <returns>   True if <paramref name="strTxt"/> is a complete or partial  
     '''             user-defined operator, else returns false.</returns>
     '''--------------------------------------------------------------------------------------------
-    Public Shared Function IsOperatorUserDefined(strTxt As String) As Boolean 'TODO make private?
+    Public Shared Function IsOperatorUserDefined(strTxt As String) As Boolean
         If Not String.IsNullOrEmpty(strTxt) AndAlso Regex.IsMatch(strTxt, "^%.*") Then
             Return True
         End If
